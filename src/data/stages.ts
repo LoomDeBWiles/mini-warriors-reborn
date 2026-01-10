@@ -414,3 +414,26 @@ export function getStage(stageId: number): StageDefinition {
   }
   return stage;
 }
+
+/**
+ * Calculate star rating for a completed battle.
+ * 1 star = victory (any HP remaining)
+ * 2 stars = 50%+ HP remaining
+ * 3 stars = 75%+ HP remaining AND under target time
+ */
+export function calculateStars(
+  baseHP: number,
+  maxHP: number,
+  elapsed: number,
+  targetTime: number,
+): 1 | 2 | 3 {
+  const hpRatio = baseHP / maxHP;
+
+  if (hpRatio >= 0.75 && elapsed <= targetTime) {
+    return 3;
+  }
+  if (hpRatio >= 0.5) {
+    return 2;
+  }
+  return 1;
+}
