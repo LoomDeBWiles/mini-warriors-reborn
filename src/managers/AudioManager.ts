@@ -118,17 +118,31 @@ export class AudioManager {
   }
 
   /**
-   * Set music volume (0-1).
+   * Set music volume (0-1). Updates all currently playing looped sounds.
    */
   setMusicVolume(volume: number): void {
     this.musicVolume = Math.max(0, Math.min(1, volume));
+
+    // Update volume on all currently playing looped sounds (music)
+    for (const sound of this.scene.sound.getAllPlaying()) {
+      if ('loop' in sound && sound.loop) {
+        (sound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(this.musicVolume);
+      }
+    }
   }
 
   /**
-   * Set SFX volume (0-1).
+   * Set SFX volume (0-1). Updates all currently playing non-looped sounds.
    */
   setSfxVolume(volume: number): void {
     this.sfxVolume = Math.max(0, Math.min(1, volume));
+
+    // Update volume on all currently playing non-looped sounds (SFX)
+    for (const sound of this.scene.sound.getAllPlaying()) {
+      if ('loop' in sound && !sound.loop) {
+        (sound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(this.sfxVolume);
+      }
+    }
   }
 
   /**

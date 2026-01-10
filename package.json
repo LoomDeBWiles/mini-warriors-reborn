@@ -1,0 +1,28 @@
+{
+  "name": "mini-warriors-reborn",
+  "version": "0.1.0",
+  "description": "A 2D lane-defense strategy game built with Phaser 3",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "phaser",
+    "game",
+    "lane-defense",
+    "strategy"
+  ],
+  "author": "Benjamin Wiley",
+  "license": "MIT",
+  "dependencies": {
+    "phaser": "^3.90.0",
+    "phaser3-rex-plugins": "^1.80.17"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
+  }
+}
