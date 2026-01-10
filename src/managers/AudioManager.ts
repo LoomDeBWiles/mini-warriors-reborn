@@ -15,11 +15,14 @@ const DEFAULT_CROSSFADE_DURATION_MS = 1000;
  * Central audio controller for music and sound effects.
  * Handles browser audio unlock requirements - browsers require user interaction
  * before audio can play, so we queue sounds until unlock occurs.
+ *
+ * Uses the game's global sound manager rather than storing a scene reference,
+ * since scenes may be destroyed during transitions.
  */
 export class AudioManager {
   private static readonly REGISTRY_KEY = 'audioManager';
 
-  private scene: Phaser.Scene;
+  private game: Phaser.Game;
   private musicVolume: number;
   private sfxVolume: number;
   private unlocked: boolean;
@@ -30,7 +33,7 @@ export class AudioManager {
   private currentMusic: Phaser.Sound.BaseSound | null;
 
   constructor(scene: Phaser.Scene, musicVolume = 1.0, sfxVolume = 1.0) {
-    this.scene = scene;
+    this.game = scene.game;
     this.musicVolume = musicVolume;
     this.sfxVolume = sfxVolume;
     this.unlocked = false;
@@ -67,7 +70,7 @@ export class AudioManager {
    * Phaser's sound manager emits 'unlocked' when the audio context becomes available.
    */
   private setupAudioUnlock(): void {
-    const soundManager = this.scene.sound;
+    const soundManager = this.game.sound;
 
     // Check if already unlocked (desktop browsers without autoplay restrictions)
     if (!soundManager.locked) {
@@ -87,7 +90,7 @@ export class AudioManager {
    */
   private playPendingSounds(): void {
     for (const pending of this.pendingSounds) {
-      this.scene.sound.play(pending.key, pending.config);
+      this.game.sound.play(pending.key, pending.config);
     }
     this.pendingSounds = [];
   }
@@ -115,7 +118,7 @@ export class AudioManager {
     // Enforce pool limit before playing new sound
     this.enforcePoolLimit(key);
 
-    const sound = this.scene.sound.add(resolvedKey, soundConfig);
+    const sound = this.game.sound.add(resolvedKey, soundConfig);
     sound.play();
 
     // Track this sound in the pool and remove when complete
@@ -227,7 +230,7 @@ export class AudioManager {
     // Stop current music before playing new track
     this.stopMusic();
 
-    const sound = this.scene.sound.add(key, soundConfig);
+    const sound = this.game.sound.add(key, soundConfig);
     sound.play();
 
     // Track as current music (only looped tracks, not jingles)
@@ -255,18 +258,18 @@ export class AudioManager {
     }
 
     // Create new music track
-    const newMusic = this.scene.sound.add(key, {
+    const newMusic = this.game.sound.add(key, {
       volume: 0, // Start at 0 for fade in
       loop: !isJingle,
     });
 
     // Fade out current music if playing
     if (this.currentMusic && this.currentMusic.isPlaying) {
-      SoundFade.fadeOut(this.scene, this.currentMusic, durationMs, true);
+      SoundFade.fadeOut(this.currentMusic, durationMs, true);
     }
 
     // Fade in new music to target volume
-    SoundFade.fadeIn(this.scene, newMusic, durationMs, this.musicVolume, 0);
+    SoundFade.fadeIn(newMusic, durationMs, this.musicVolume, 0);
 
     // Track as current music (only looped tracks, not jingles)
     if (!isJingle) {
@@ -278,7 +281,7 @@ export class AudioManager {
    * Stop all music currently playing.
    */
   stopMusic(): void {
-    this.scene.sound.stopAll();
+    this.game.sound.stopAll();
     this.currentMusic = null;
   }
 
@@ -289,7 +292,7 @@ export class AudioManager {
     this.musicVolume = Math.max(0, Math.min(1, volume));
 
     // Update volume on all currently playing looped sounds (music)
-    for (const sound of this.scene.sound.getAllPlaying()) {
+    for (const sound of this.game.sound.getAllPlaying()) {
       if ('loop' in sound && sound.loop) {
         (sound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(this.musicVolume);
       }
@@ -303,7 +306,7 @@ export class AudioManager {
     this.sfxVolume = Math.max(0, Math.min(1, volume));
 
     // Update volume on all currently playing non-looped sounds (SFX)
-    for (const sound of this.scene.sound.getAllPlaying()) {
+    for (const sound of this.game.sound.getAllPlaying()) {
       if ('loop' in sound && !sound.loop) {
         (sound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(this.sfxVolume);
       }
@@ -314,14 +317,14 @@ export class AudioManager {
    * Pause all audio.
    */
   pause(): void {
-    this.scene.sound.pauseAll();
+    this.game.sound.pauseAll();
   }
 
   /**
    * Resume all audio.
    */
   resume(): void {
-    this.scene.sound.resumeAll();
+    this.game.sound.resumeAll();
   }
 
   /**
