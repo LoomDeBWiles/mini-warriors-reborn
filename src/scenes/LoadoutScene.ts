@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
 import { AudioManager } from '../managers/AudioManager';
+import { GameState } from '../managers/GameState';
 import { MUSIC_KEYS } from '../data/audio';
 import { LoadoutGrid } from '../ui/LoadoutGrid';
 import { getUnlockedUnits } from '../data/units';
@@ -41,8 +42,9 @@ export class LoadoutScene extends Phaser.Scene {
     title.setOrigin(0.5);
 
     // Get unlocked units based on highest stage reached
-    // For now, use stageId as the unlock threshold
-    const unlockedUnits = getUnlockedUnits(this.stageId);
+    const gameState = GameState.getInstance(this);
+    const highestStage = gameState?.highestStage ?? this.stageId;
+    const unlockedUnits = getUnlockedUnits(highestStage);
 
     // Create loadout grid (self-registers with scene)
     new LoadoutGrid({
