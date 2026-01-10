@@ -8,6 +8,7 @@ import { WaveManager } from '../systems/WaveManager';
 import { UNIT_DEFINITIONS } from '../data/units';
 import { WaveDefinition } from '../data/enemies';
 import { EnemyUnit } from '../units/EnemyUnit';
+import { PlayerUnit, createPlayerUnit } from '../units/PlayerUnit';
 import { Base } from '../entities/Base';
 
 const INITIAL_GOLD = 50;
@@ -17,6 +18,8 @@ const PLAYER_BASE_X = 50;
 const ENEMY_BASE_X = GAME_WIDTH - 50;
 const ENEMY_SPAWN_X = GAME_WIDTH - 50;
 const ENEMY_SPAWN_Y = GAME_HEIGHT / 2;
+const PLAYER_SPAWN_X = 100;
+const PLAYER_SPAWN_Y = GAME_HEIGHT / 2;
 
 /** Default waves: 3 goblins per wave with 2s spacing, matching acceptance criteria */
 const DEFAULT_WAVE_DEFINITIONS: WaveDefinition[] = [
@@ -53,6 +56,7 @@ export class BattleScene extends Phaser.Scene {
   private loadout: string[] = [];
   private playerBase!: Base;
   private enemyBase!: Base;
+  private playerUnits!: Phaser.GameObjects.Group;
 
   constructor() {
     super({ key: 'battle' });
@@ -89,6 +93,9 @@ export class BattleScene extends Phaser.Scene {
       isPlayerBase: false,
       onDeath: () => this.endBattle(true),
     });
+
+    // Create player units group
+    this.playerUnits = this.add.group();
 
     // Create wave manager with default waves
     this.waveManager = new WaveManager(
@@ -191,8 +198,18 @@ export class BattleScene extends Phaser.Scene {
 
     if (this.spendGold(unit.spawnCost)) {
       this.spawnBar.startCooldown(unitId);
-      console.log(`Spawning ${unit.name}`);
+      this.spawnUnit(unitId);
     }
+  }
+
+  /**
+   * Spawn a player unit at the spawn point and add to playerUnits group.
+   */
+  spawnUnit(unitId: string): PlayerUnit {
+    const unit = createPlayerUnit(this, unitId, PLAYER_SPAWN_X, PLAYER_SPAWN_Y);
+    this.playerUnits.add(unit);
+    console.log(`Spawned ${unit.definition.name} at (${unit.x}, ${unit.y})`);
+    return unit;
   }
 
   // Public methods for game systems to update HUD
@@ -233,6 +250,10 @@ export class BattleScene extends Phaser.Scene {
 
   getEnemyBase(): Base {
     return this.enemyBase;
+  }
+
+  getPlayerUnits(): Phaser.GameObjects.Group {
+    return this.playerUnits;
   }
 
   advanceWave(): void {
