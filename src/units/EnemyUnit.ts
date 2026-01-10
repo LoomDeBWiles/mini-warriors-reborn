@@ -32,6 +32,7 @@ export class EnemyUnit extends Unit {
         range: config.definition.range,
         speed: config.definition.speed,
       },
+      textureKey: `enemy_${config.definition.id}`,
     });
     this.enemyDefinition = config.definition;
   }

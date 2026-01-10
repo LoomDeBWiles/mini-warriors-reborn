@@ -22,7 +22,7 @@ interface PlayerUnitConfig {
  */
 export class PlayerUnit extends Unit {
   constructor(config: PlayerUnitConfig) {
-    super(config);
+    super({ ...config, textureKey: `unit_${config.definition.id}` });
   }
 }
 

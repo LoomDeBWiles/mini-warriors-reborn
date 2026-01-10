@@ -13,6 +13,7 @@ interface UnitConfig {
   x: number;
   y: number;
   definition: UnitDefinition;
+  textureKey: string;
 }
 
 /** Amplitude of flying unit bob in pixels */
@@ -49,7 +50,7 @@ export class Unit extends Phaser.GameObjects.Container {
     super(config.scene, config.x, config.y);
     this.definition = config.definition;
 
-    this.sprite = this.scene.add.sprite(0, 0, this.definition.id);
+    this.sprite = this.scene.add.sprite(0, 0, config.textureKey);
     this.add(this.sprite);
 
     this.healthBar = new HealthBar({
