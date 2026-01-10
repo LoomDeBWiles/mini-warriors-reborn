@@ -10,6 +10,7 @@ import { PlayerUnit, createPlayerUnit } from '../units/PlayerUnit';
 import { Base } from '../entities/Base';
 import { Unit, UnitState } from '../units/Unit';
 import { getStage } from '../data/stages';
+import { GameState } from '../managers/GameState';
 
 const INITIAL_GOLD = 50;
 const PLAYER_BASE_HP = 1000;
@@ -410,6 +411,17 @@ export class BattleScene extends Phaser.Scene {
   private endBattle(victory: boolean): void {
     const stars = victory ? this.calculateStars() : 0;
     const goldReward = victory ? 100 : 25;
+
+    if (victory) {
+      const stage = getStage(this.stageId);
+      if (stage.unlocksUnit) {
+        const gameState = GameState.getInstance(this);
+        if (gameState) {
+          gameState.unlockUnit(stage.unlocksUnit);
+          gameState.save();
+        }
+      }
+    }
 
     this.scene.pause();
     this.scene.launch('results', {
