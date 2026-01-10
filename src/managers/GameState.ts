@@ -253,6 +253,17 @@ export class GameState {
   }
 
   /**
+   * Spend gold from the player's balance.
+   * Returns true if successful, false if insufficient funds.
+   */
+  spendGold(amount: number): boolean {
+    if (amount <= 0) return false;
+    if (this.data.gold < amount) return false;
+    this.data.gold -= amount;
+    return true;
+  }
+
+  /**
    * Record a stage completion. Updates stars (keeping best) and unlocks next stage.
    * @param stageId - Completed stage number
    * @param stars - Stars earned (1-3)

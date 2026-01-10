@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config';
 import { AudioManager } from '../managers/AudioManager';
+import { GameState, UnitUpgrades } from '../managers/GameState';
 import { MUSIC_KEYS } from '../data/audio';
 import { getUnlockedUnits, UNIT_DEFINITIONS } from '../data/units';
 import { UpgradeTree } from '../ui/UpgradeTree';
@@ -8,24 +9,6 @@ import { UpgradePath, CASTLE_UPGRADES, getCastleUpgradeCost } from '../data/upgr
 
 const UNIT_BUTTON_SIZE = 70;
 const UNIT_BUTTON_SPACING = 10;
-
-interface UnitUpgrades {
-  offense: number;
-  defense: number;
-  utility: number;
-}
-
-interface CastleUpgrades {
-  [upgradeId: string]: number;
-}
-
-interface GameState {
-  highestStage: number;
-  gold: number;
-  stageStars: Record<number, number>;
-  unitUpgrades: Record<string, UnitUpgrades>;
-  castleUpgrades: CastleUpgrades;
-}
 
 type TabType = 'units' | 'castle';
 
@@ -104,14 +87,11 @@ export class UpgradeScene extends Phaser.Scene {
   }
 
   private getGameState(): GameState {
-    const stored = this.registry.get('gameState') as GameState | undefined;
-    return stored ?? {
-      highestStage: 1,
-      gold: 500,
-      stageStars: {},
-      unitUpgrades: {},
-      castleUpgrades: {},
-    };
+    const gameState = GameState.getInstance(this);
+    if (!gameState) {
+      throw new Error('GameState not initialized');
+    }
+    return gameState;
   }
 
   private getUnitUpgrades(unitId: string): UnitUpgrades {
@@ -364,18 +344,20 @@ export class UpgradeScene extends Phaser.Scene {
   private confirmCastlePurchase(upgradeId: string, level: number, cost: number): void {
     const gameState = this.getGameState();
 
-    // Verify still affordable
-    if (gameState.gold < cost) return;
-
-    // Deduct gold and apply upgrade
-    gameState.gold -= cost;
-    if (!gameState.castleUpgrades) {
-      gameState.castleUpgrades = {};
+    // Deduct gold
+    if (!gameState.spendGold(cost)) {
+      AudioManager.getInstance(this)?.playSfx('purchase_fail');
+      return;
     }
+
+    // Apply upgrade
     gameState.castleUpgrades[upgradeId] = level;
 
-    // Save updated state
-    this.registry.set('gameState', gameState);
+    // Save progress to localStorage
+    gameState.save();
+
+    // Play purchase confirmation sound
+    AudioManager.getInstance(this)?.playSfx('purchase_success');
 
     // Update gold display
     if (this.goldDisplay) {
@@ -544,12 +526,25 @@ export class UpgradeScene extends Phaser.Scene {
   private confirmPurchase(unitId: string, path: UpgradePath, tier: number, cost: number): void {
     const gameState = this.getGameState();
 
-    // Deduct gold and apply upgrade
-    gameState.gold -= cost;
+    // Deduct gold
+    if (!gameState.spendGold(cost)) {
+      AudioManager.getInstance(this)?.playSfx('purchase_fail');
+      return;
+    }
+
+    // Initialize unit upgrades if needed
+    if (!gameState.unitUpgrades[unitId]) {
+      gameState.unitUpgrades[unitId] = { offense: 0, defense: 0, utility: 0 };
+    }
+
+    // Apply upgrade
     gameState.unitUpgrades[unitId][path] = tier;
 
-    // Save updated state
-    this.registry.set('gameState', gameState);
+    // Save progress to localStorage
+    gameState.save();
+
+    // Play purchase confirmation sound
+    AudioManager.getInstance(this)?.playSfx('purchase_success');
 
     // Update displays
     if (this.goldDisplay) {
