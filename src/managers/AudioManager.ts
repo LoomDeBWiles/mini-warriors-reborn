@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import SoundFade from 'phaser3-rex-plugins/plugins/soundfade';
 import { MUSIC_KEYS, SFX_KEYS, type SfxKey } from '../data/audio';
 
 /** Music keys that should play once without looping (jingles) */
@@ -6,6 +7,9 @@ const JINGLE_KEYS: Set<string> = new Set([MUSIC_KEYS.victory, MUSIC_KEYS.defeat]
 
 /** Default max concurrent instances for pooled sounds */
 const DEFAULT_MAX_INSTANCES = 8;
+
+/** Default crossfade duration in milliseconds */
+const DEFAULT_CROSSFADE_DURATION_MS = 1000;
 
 /**
  * Central audio controller for music and sound effects.
@@ -22,6 +26,8 @@ export class AudioManager {
   private pendingSounds: Array<{ key: string; config?: Phaser.Types.Sound.SoundConfig }>;
   /** Pool of active sound instances per SFX key (logical key, not resolved audio key) */
   private sfxPool: Map<string, Phaser.Sound.BaseSound[]>;
+  /** Currently playing background music track */
+  private currentMusic: Phaser.Sound.BaseSound | null;
 
   constructor(scene: Phaser.Scene, musicVolume = 1.0, sfxVolume = 1.0) {
     this.scene = scene;
@@ -30,6 +36,7 @@ export class AudioManager {
     this.unlocked = false;
     this.pendingSounds = [];
     this.sfxPool = new Map();
+    this.currentMusic = null;
 
     this.setupAudioUnlock();
   }
@@ -201,6 +208,7 @@ export class AudioManager {
   /**
    * Play background music. If audio is locked, queues it for playback after unlock.
    * For jingles (victory/defeat), stops current music and plays once without looping.
+   * Note: Use switchMusic() for crossfade transitions between scenes.
    */
   playMusic(key: string, config?: Phaser.Types.Sound.SoundConfig): void {
     const isJingle = JINGLE_KEYS.has(key);
@@ -219,7 +227,51 @@ export class AudioManager {
     // Stop current music before playing new track
     this.stopMusic();
 
-    this.scene.sound.play(key, soundConfig);
+    const sound = this.scene.sound.add(key, soundConfig);
+    sound.play();
+
+    // Track as current music (only looped tracks, not jingles)
+    if (!isJingle) {
+      this.currentMusic = sound;
+    }
+  }
+
+  /**
+   * Switch to new background music with crossfade. Fades out current music while
+   * fading in the new track. Use this for scene transitions.
+   * @param key - The music key to play
+   * @param durationMs - Crossfade duration in milliseconds (default 1000)
+   */
+  switchMusic(key: string, durationMs = DEFAULT_CROSSFADE_DURATION_MS): void {
+    const isJingle = JINGLE_KEYS.has(key);
+
+    if (!this.unlocked) {
+      // If audio locked, queue as regular playback (will play when unlocked)
+      this.pendingSounds.push({
+        key,
+        config: { volume: this.musicVolume, loop: !isJingle },
+      });
+      return;
+    }
+
+    // Create new music track
+    const newMusic = this.scene.sound.add(key, {
+      volume: 0, // Start at 0 for fade in
+      loop: !isJingle,
+    });
+
+    // Fade out current music if playing
+    if (this.currentMusic && this.currentMusic.isPlaying) {
+      SoundFade.fadeOut(this.scene, this.currentMusic, durationMs, true);
+    }
+
+    // Fade in new music to target volume
+    SoundFade.fadeIn(this.scene, newMusic, durationMs, this.musicVolume, 0);
+
+    // Track as current music (only looped tracks, not jingles)
+    if (!isJingle) {
+      this.currentMusic = newMusic;
+    }
   }
 
   /**
@@ -227,6 +279,7 @@ export class AudioManager {
    */
   stopMusic(): void {
     this.scene.sound.stopAll();
+    this.currentMusic = null;
   }
 
   /**
