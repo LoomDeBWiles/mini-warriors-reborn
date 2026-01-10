@@ -242,4 +242,36 @@ export class GameState {
 
     return true;
   }
+
+  /**
+   * Add gold to the player's persistent balance.
+   */
+  addGold(amount: number): void {
+    if (amount <= 0) return;
+    this.data.gold += amount;
+    this.data.totalGoldEarned += amount;
+  }
+
+  /**
+   * Record a stage completion. Updates stars (keeping best) and unlocks next stage.
+   * @param stageId - Completed stage number
+   * @param stars - Stars earned (1-3)
+   */
+  recordStageCompletion(stageId: number, stars: number): void {
+    const currentStars = this.data.stageStars[stageId] ?? 0;
+    this.data.stageStars[stageId] = Math.max(currentStars, stars);
+
+    if (stageId >= this.data.highestStage && stageId < 20) {
+      this.data.highestStage = stageId + 1;
+    }
+
+    this.data.stats.totalVictories += 1;
+  }
+
+  /**
+   * Record a battle (victory or defeat) for stats tracking.
+   */
+  recordBattle(): void {
+    this.data.stats.totalBattles += 1;
+  }
 }

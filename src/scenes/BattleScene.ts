@@ -9,8 +9,9 @@ import { EnemyUnit } from '../units/EnemyUnit';
 import { PlayerUnit, createPlayerUnit } from '../units/PlayerUnit';
 import { Base } from '../entities/Base';
 import { Unit, UnitState } from '../units/Unit';
-import { getStage, calculateStars } from '../data/stages';
+import { getStage } from '../data/stages';
 import { GameState } from '../managers/GameState';
+import { calculateRewards } from '../systems/EconomyManager';
 
 const INITIAL_GOLD = 50;
 const PLAYER_BASE_HP = 1000;
@@ -34,6 +35,7 @@ interface BattleSceneData {
 export class BattleScene extends Phaser.Scene {
   private stageId = 1;
   private gold = INITIAL_GOLD;
+  private killGold = 0;
   private battleStartTime = 0;
 
   private hud!: HUD;
@@ -57,6 +59,7 @@ export class BattleScene extends Phaser.Scene {
 
     // Reset battle state
     this.gold = INITIAL_GOLD;
+    this.killGold = 0;
     this.battleStartTime = 0;
   }
 
@@ -371,6 +374,7 @@ export class BattleScene extends Phaser.Scene {
 
   addGold(amount: number): void {
     this.gold += amount;
+    this.killGold += amount;
     this.hud.updateGold(this.gold);
     this.spawnBar.updateGold(this.gold);
   }
@@ -432,24 +436,41 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private endBattle(victory: boolean): void {
-    const stage = getStage(this.stageId);
     const elapsedSeconds = (this.time.now - this.battleStartTime) / 1000;
-    const stars = victory
-      ? calculateStars(
+
+    // Play victory or defeat jingle
+    const audio = AudioManager.getInstance(this);
+    audio?.switchMusic(victory ? MUSIC_KEYS.victory : MUSIC_KEYS.defeat);
+
+    // Calculate rewards using the progression system
+    const rewards = victory
+      ? calculateRewards(
+          this.stageId,
           this.playerBase.getHp(),
           this.playerBase.getMaxHp(),
           elapsedSeconds,
-          stage.targetTime
+          this.killGold
         )
-      : 0;
-    const goldReward = victory ? 100 : 25;
+      : null;
 
-    if (victory && stage.unlocksUnit) {
-      const gameState = GameState.getInstance(this);
-      if (gameState) {
-        gameState.unlockUnit(stage.unlocksUnit);
-        gameState.save();
+    const stars = rewards?.stars ?? 0;
+    const goldReward = rewards?.totalGold ?? 25;
+
+    // Update persistent game state
+    const gameState = GameState.getInstance(this);
+    if (gameState) {
+      gameState.recordBattle();
+
+      if (victory && rewards) {
+        gameState.addGold(rewards.totalGold);
+        gameState.recordStageCompletion(this.stageId, rewards.stars);
+
+        if (rewards.unitUnlock) {
+          gameState.unlockUnit(rewards.unitUnlock);
+        }
       }
+
+      gameState.save();
     }
 
     this.scene.pause();
