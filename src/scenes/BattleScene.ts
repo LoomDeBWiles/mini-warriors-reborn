@@ -13,6 +13,7 @@ import { Unit, UnitState } from '../units/Unit';
 import { getStage } from '../data/stages';
 import { GameState } from '../managers/GameState';
 import { calculateRewards, EconomyManager } from '../systems/EconomyManager';
+import { getFortificationMultiplier, getTreasuryMultiplier } from '../data/upgrades';
 
 const INITIAL_GOLD = 50;
 const PLAYER_BASE_HP = 1000;
@@ -38,6 +39,7 @@ export class BattleScene extends Phaser.Scene {
   private gold = INITIAL_GOLD;
   private killGold = 0;
   private battleStartTime = 0;
+  private treasuryMultiplier = 1;
 
   private hud!: HUD;
   private spawnBar!: SpawnBar;
@@ -70,11 +72,18 @@ export class BattleScene extends Phaser.Scene {
     const audio = AudioManager.getInstance(this);
     audio?.switchMusic(MUSIC_KEYS.battle_easy);
 
+    // Get castle upgrade levels for battle bonuses
+    const gameState = GameState.getInstance(this);
+    const fortificationLevel = gameState?.castleUpgrades['fortification'] ?? 0;
+    const treasuryLevel = gameState?.castleUpgrades['treasury'] ?? 0;
+    const playerBaseHp = Math.round(PLAYER_BASE_HP * getFortificationMultiplier(fortificationLevel));
+    this.treasuryMultiplier = getTreasuryMultiplier(treasuryLevel);
+
     // Create bases
     this.playerBase = new Base({
       scene: this,
       x: PLAYER_BASE_X,
-      maxHp: PLAYER_BASE_HP,
+      maxHp: playerBaseHp,
       isPlayerBase: true,
       onDeath: () => this.endBattle(false),
     });
@@ -112,7 +121,7 @@ export class BattleScene extends Phaser.Scene {
       scene: this,
       initialGold: this.gold,
       totalWaves: this.waveManager.getTotalWaves(),
-      playerBaseHp: PLAYER_BASE_HP,
+      playerBaseHp: playerBaseHp,
       enemyBaseHp: ENEMY_BASE_HP,
     });
 
@@ -142,7 +151,6 @@ export class BattleScene extends Phaser.Scene {
     this.events.on('enemy-killed', () => this.waveManager.notifyEnemyKilled());
 
     // Initialize economy manager for passive gold income from Gold Mine upgrades
-    const gameState = GameState.getInstance(this);
     const goldMineLevel = gameState?.castleUpgrades['goldMine'] ?? 0;
     this.economyManager = new EconomyManager(this, 0, undefined, goldMineLevel);
     this.events.on('gold-changed', (data: { gold: number; added: number }) => {
@@ -442,8 +450,9 @@ export class BattleScene extends Phaser.Scene {
   // Public methods for game systems to update HUD
 
   addKillGold(amount: number): void {
-    this.gold += amount;
-    this.killGold += amount;
+    const boostedAmount = Math.round(amount * this.treasuryMultiplier);
+    this.gold += boostedAmount;
+    this.killGold += boostedAmount;
     this.hud.updateGold(this.gold);
     this.spawnBar.updateGold(this.gold);
   }

@@ -7,6 +7,8 @@ import {
   getDefenseMultiplier,
   getSpawnCostMultiplier,
   getCooldownMultiplier,
+  getArmoryMultiplier,
+  getBarracksMultiplier,
 } from '../data/upgrades';
 
 interface PlayerUnitConfig {
@@ -46,7 +48,7 @@ function applyUpgrades(
 }
 
 /**
- * Get effective spawn cost and cooldown for a unit, applying utility upgrades.
+ * Get effective spawn cost and cooldown for a unit, applying utility upgrades and barracks bonus.
  * Returns base values if no upgrades or GameState unavailable.
  */
 export function getEffectiveSpawnStats(
@@ -60,10 +62,14 @@ export function getEffectiveSpawnStats(
 
   const gameState = GameState.getInstance(scene);
   const utilityTier = gameState?.unitUpgrades[unitId]?.utility ?? 0;
+  const barracksLevel = gameState?.castleUpgrades['barracks'] ?? 0;
+
+  // Apply both utility upgrade and barracks castle upgrade to cooldown
+  const cooldownMultiplier = getCooldownMultiplier(utilityTier) * getBarracksMultiplier(barracksLevel);
 
   return {
     spawnCost: Math.round(baseDefinition.spawnCost * getSpawnCostMultiplier(utilityTier)),
-    cooldownMs: Math.round(baseDefinition.cooldownMs * getCooldownMultiplier(utilityTier)),
+    cooldownMs: Math.round(baseDefinition.cooldownMs * cooldownMultiplier),
   };
 }
 
@@ -100,6 +106,15 @@ export function createPlayerUnit(
         upgrades.defense,
         upgrades.utility
       );
+    }
+
+    // Apply armory castle upgrade bonus to damage
+    const armoryLevel = gameState.castleUpgrades['armory'] ?? 0;
+    if (armoryLevel > 0) {
+      definition = {
+        ...definition,
+        damage: Math.round(definition.damage * getArmoryMultiplier(armoryLevel)),
+      };
     }
   }
 

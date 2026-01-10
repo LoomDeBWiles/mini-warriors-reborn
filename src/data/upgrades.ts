@@ -156,3 +156,23 @@ export function getSpawnCostMultiplier(tier: number): number {
 export function getCooldownMultiplier(tier: number): number {
   return COOLDOWN_MULTIPLIERS[Math.min(Math.max(tier, 0), 3)];
 }
+
+/** Get fortification multiplier: +10% base HP per level */
+export function getFortificationMultiplier(level: number): number {
+  return 1 + 0.1 * Math.max(level, 0);
+}
+
+/** Get armory multiplier: +5% unit damage per level */
+export function getArmoryMultiplier(level: number): number {
+  return 1 + 0.05 * Math.max(level, 0);
+}
+
+/** Get barracks multiplier: -5% spawn cooldown per level */
+export function getBarracksMultiplier(level: number): number {
+  return 1 - 0.05 * Math.max(level, 0);
+}
+
+/** Get treasury multiplier: +10% gold drops per level */
+export function getTreasuryMultiplier(level: number): number {
+  return 1 + 0.1 * Math.max(level, 0);
+}
