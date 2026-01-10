@@ -26,7 +26,7 @@ export class AudioManager {
   private musicVolume: number;
   private sfxVolume: number;
   private unlocked: boolean;
-  private pendingSounds: Array<{ key: string; config?: Phaser.Types.Sound.SoundConfig }>;
+  private pendingSounds: Array<{ key: string; config?: Phaser.Types.Sound.SoundConfig; type: 'sfx' | 'music' }>;
   /** Pool of active sound instances per SFX key (logical key, not resolved audio key) */
   private sfxPool: Map<string, Phaser.Sound.BaseSound[]>;
   /** Currently playing background music track */
@@ -90,12 +90,19 @@ export class AudioManager {
 
   /**
    * Play all sounds that were queued while audio was locked.
+   * Routes through playSfx/playMusic to respect pool limits and tracking.
    */
   private playPendingSounds(): void {
-    for (const pending of this.pendingSounds) {
-      this.game.sound.play(pending.key, pending.config);
-    }
+    const sounds = this.pendingSounds;
     this.pendingSounds = [];
+
+    for (const pending of sounds) {
+      if (pending.type === 'sfx') {
+        this.playSfx(pending.key, pending.config);
+      } else {
+        this.playMusic(pending.key, pending.config);
+      }
+    }
   }
 
   /**
@@ -114,7 +121,8 @@ export class AudioManager {
     };
 
     if (!this.unlocked) {
-      this.pendingSounds.push({ key: resolvedKey, config: soundConfig });
+      // Store original key (not resolved) so playSfx can reprocess with pool logic on unlock
+      this.pendingSounds.push({ key, config, type: 'sfx' });
       return;
     }
 
@@ -226,7 +234,7 @@ export class AudioManager {
     };
 
     if (!this.unlocked) {
-      this.pendingSounds.push({ key, config: soundConfig });
+      this.pendingSounds.push({ key, config, type: 'music' });
       return;
     }
 
@@ -258,10 +266,7 @@ export class AudioManager {
 
     if (!this.unlocked) {
       // If audio locked, queue as regular playback (will play when unlocked)
-      this.pendingSounds.push({
-        key,
-        config: { volume: this.musicVolume, loop: !isJingle },
-      });
+      this.pendingSounds.push({ key, type: 'music' });
       return;
     }
 
