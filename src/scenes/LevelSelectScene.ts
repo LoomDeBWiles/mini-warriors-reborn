@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config';
 import { AudioManager } from '../managers/AudioManager';
 import { MUSIC_KEYS } from '../data/audio';
-import { getStageDefinition } from '../data/stages';
+import { getStage, StageDefinition } from '../data/stages';
 
 const TOTAL_STAGES = 20;
 const GRID_COLS = 5;
@@ -106,11 +106,16 @@ export class LevelSelectScene extends Phaser.Scene {
   }
 
   private showTooltip(stageId: number, x: number, y: number): void {
-    const stage = getStageDefinition(stageId);
-    if (!stage || !this.tooltip || !this.tooltipBg || !this.tooltipText) return;
+    let stage: StageDefinition;
+    try {
+      stage = getStage(stageId);
+    } catch {
+      return;
+    }
+    if (!this.tooltip || !this.tooltipBg || !this.tooltipText) return;
 
-    const enemyList = stage.enemies.join(', ');
-    const content = `${stage.name}\nEnemies: ${enemyList}\nReward: ${stage.baseGold} gold`;
+    const waveCount = stage.waves.length;
+    const content = `${stage.name}\nWaves: ${waveCount}\nReward: ${stage.baseGoldReward} gold`;
 
     this.tooltipText.setText(content);
     this.tooltipText.setOrigin(0, 0);
