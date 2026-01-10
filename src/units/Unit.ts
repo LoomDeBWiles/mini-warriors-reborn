@@ -59,6 +59,7 @@ export class Unit extends Phaser.GameObjects.Container {
     const context: TransitionContext = {
       distanceToEnemy,
       attackRange: this.definition.range,
+      isTank: this.definition.isTank,
     };
     this.stateMachine.update(context);
   }
@@ -68,6 +69,14 @@ export class Unit extends Phaser.GameObjects.Container {
    */
   getState(): UnitState {
     return this.stateMachine.getState();
+  }
+
+  /**
+   * Returns true if this unit is blocking enemy movement.
+   * Tank units enter holding state and block enemies from advancing.
+   */
+  isBlocking(): boolean {
+    return this.stateMachine.getState() === UnitState.Holding;
   }
 
   takeDamage(amount: number): void {

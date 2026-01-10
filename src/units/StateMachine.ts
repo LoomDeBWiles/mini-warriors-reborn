@@ -4,6 +4,7 @@
 export enum UnitState {
   Moving = 'moving',
   Attacking = 'attacking',
+  Holding = 'holding',
 }
 
 /**
@@ -14,6 +15,8 @@ export interface TransitionContext {
   distanceToEnemy: number | null;
   /** Attack range of the unit in pixels (0 = melee) */
   attackRange: number;
+  /** Tank units enter holding state instead of attacking */
+  isTank?: boolean;
 }
 
 /** Melee range threshold - units attack when closer than this distance */
@@ -53,7 +56,7 @@ export class StateMachine {
   }
 
   private evaluateTransition(context: TransitionContext): UnitState {
-    const { distanceToEnemy, attackRange } = context;
+    const { distanceToEnemy, attackRange, isTank } = context;
 
     if (distanceToEnemy === null) {
       return UnitState.Moving;
@@ -63,7 +66,8 @@ export class StateMachine {
     const effectiveRange = attackRange > 0 ? attackRange : MELEE_RANGE;
 
     if (distanceToEnemy <= effectiveRange) {
-      return UnitState.Attacking;
+      // Tank units enter holding state to block enemies
+      return isTank ? UnitState.Holding : UnitState.Attacking;
     }
 
     return UnitState.Moving;

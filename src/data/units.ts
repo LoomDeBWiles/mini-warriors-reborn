@@ -19,6 +19,8 @@ export interface UnitDefinition {
   range: number;
   /** Movement speed in pixels/sec */
   speed: number;
+  /** Tank units enter holding state and block enemy movement */
+  isTank?: boolean;
 }
 
 /**
@@ -57,6 +59,7 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
     damage: 18,
     range: 0,
     speed: 50,
+    isTank: true,
   },
   mage: {
     id: 'mage',
@@ -123,6 +126,7 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
     damage: 22,
     range: 0,
     speed: 55,
+    isTank: true,
   },
   dragon: {
     id: 'dragon',
