@@ -160,7 +160,7 @@ export class GameState {
 
     const data = loadGameState();
     const state = new GameState(data);
-    scene.registry.set(GameState.REGISTRY_KEY, state.data);
+    scene.registry.set(GameState.REGISTRY_KEY, state);
     return state;
   }
 

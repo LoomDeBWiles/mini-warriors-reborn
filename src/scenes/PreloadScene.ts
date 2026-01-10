@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config';
 import { AudioManager } from '../managers/AudioManager';
-import { loadGameState } from '../managers/GameState';
+import { GameState } from '../managers/GameState';
 
 const SETTINGS_STORAGE_KEY = 'miniWarriorsSettings';
 
@@ -47,8 +47,7 @@ export class PreloadScene extends Phaser.Scene {
     AudioManager.init(this, musicVolume);
 
     // Load GameState from localStorage and place in registry
-    const gameState = loadGameState();
-    this.registry.set('gameState', gameState);
+    GameState.init(this);
 
     this.scene.start('menu');
   }
