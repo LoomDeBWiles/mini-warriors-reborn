@@ -4,6 +4,7 @@
 export interface SfxDefinition {
   key: string;
   variations?: string[];
+  maxInstances?: number; // For pooling: limit concurrent instances
 }
 
 /**
@@ -23,6 +24,7 @@ export const SFX_KEYS = {
   sword_hit: {
     key: 'sfx_sword_hit',
     variations: ['sfx_sword_hit_1', 'sfx_sword_hit_2', 'sfx_sword_hit_3'],
+    maxInstances: 4,
   },
   sword_swing: { key: 'sfx_sword_swing' },
 

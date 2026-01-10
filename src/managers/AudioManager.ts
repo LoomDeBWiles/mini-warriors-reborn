@@ -1,6 +1,9 @@
 import Phaser from 'phaser';
 import { SFX_KEYS, type SfxKey } from '../data/audio';
 
+/** Default max concurrent instances for pooled sounds */
+const DEFAULT_MAX_INSTANCES = 8;
+
 /**
  * Central audio controller for music and sound effects.
  * Handles browser audio unlock requirements - browsers require user interaction
@@ -14,6 +17,8 @@ export class AudioManager {
   private sfxVolume: number;
   private unlocked: boolean;
   private pendingSounds: Array<{ key: string; config?: Phaser.Types.Sound.SoundConfig }>;
+  /** Pool of active sound instances per SFX key (logical key, not resolved audio key) */
+  private sfxPool: Map<string, Phaser.Sound.BaseSound[]>;
 
   constructor(scene: Phaser.Scene, musicVolume = 1.0, sfxVolume = 1.0) {
     this.scene = scene;
@@ -21,6 +26,7 @@ export class AudioManager {
     this.sfxVolume = sfxVolume;
     this.unlocked = false;
     this.pendingSounds = [];
+    this.sfxPool = new Map();
 
     this.setupAudioUnlock();
   }
@@ -79,6 +85,7 @@ export class AudioManager {
   /**
    * Play a sound effect. If audio is locked, queues it for playback after unlock.
    * For sounds with variations, randomly selects one. Applies random pitch variation.
+   * Uses pooling to limit concurrent instances of the same sound.
    */
   playSfx(key: string, config?: Phaser.Types.Sound.SoundConfig): void {
     const resolvedKey = this.resolveSfxKey(key);
@@ -95,7 +102,72 @@ export class AudioManager {
       return;
     }
 
-    this.scene.sound.play(resolvedKey, soundConfig);
+    // Enforce pool limit before playing new sound
+    this.enforcePoolLimit(key);
+
+    const sound = this.scene.sound.add(resolvedKey, soundConfig);
+    sound.play();
+
+    // Track this sound in the pool and remove when complete
+    this.addToPool(key, sound);
+    sound.once('complete', () => this.removeFromPool(key, sound));
+    sound.once('stop', () => this.removeFromPool(key, sound));
+  }
+
+  /**
+   * Get the max instances allowed for an SFX key.
+   */
+  private getMaxInstances(key: string): number {
+    if (!(key in SFX_KEYS)) {
+      return DEFAULT_MAX_INSTANCES;
+    }
+    const sfxDef = SFX_KEYS[key as SfxKey];
+    if ('maxInstances' in sfxDef && typeof sfxDef.maxInstances === 'number') {
+      return sfxDef.maxInstances;
+    }
+    return DEFAULT_MAX_INSTANCES;
+  }
+
+  /**
+   * Enforce the pool limit for an SFX key by stopping the oldest instance if at limit.
+   */
+  private enforcePoolLimit(key: string): void {
+    const pool = this.sfxPool.get(key);
+    if (!pool) return;
+
+    const maxInstances = this.getMaxInstances(key);
+
+    // Remove completed sounds from pool
+    const activeSounds = pool.filter((s) => s.isPlaying);
+    this.sfxPool.set(key, activeSounds);
+
+    // If at limit, stop the oldest sound
+    while (activeSounds.length >= maxInstances && activeSounds.length > 0) {
+      const oldest = activeSounds.shift();
+      oldest?.stop();
+    }
+  }
+
+  /**
+   * Add a sound to the pool for the given key.
+   */
+  private addToPool(key: string, sound: Phaser.Sound.BaseSound): void {
+    const pool = this.sfxPool.get(key) ?? [];
+    pool.push(sound);
+    this.sfxPool.set(key, pool);
+  }
+
+  /**
+   * Remove a sound from the pool for the given key.
+   */
+  private removeFromPool(key: string, sound: Phaser.Sound.BaseSound): void {
+    const pool = this.sfxPool.get(key);
+    if (!pool) return;
+
+    const index = pool.indexOf(sound);
+    if (index !== -1) {
+      pool.splice(index, 1);
+    }
   }
 
   /**
