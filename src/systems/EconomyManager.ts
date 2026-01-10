@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import { getStage, calculateStars } from '../data/stages';
+import { UNIT_DEFINITIONS } from '../data/units';
+import { StatModifiers } from './UpgradeManager';
 
 /**
  * Battle rewards returned after a victory.
@@ -64,10 +66,23 @@ export function calculateRewards(
 export class EconomyManager {
   private scene: Phaser.Scene;
   private gold: number;
+  private getModifiers: (unitId: string) => StatModifiers;
 
-  constructor(scene: Phaser.Scene, initialGold: number = 0) {
+  constructor(
+    scene: Phaser.Scene,
+    initialGold: number = 0,
+    getModifiers?: (unitId: string) => StatModifiers,
+  ) {
     this.scene = scene;
     this.gold = initialGold;
+    this.getModifiers =
+      getModifiers ??
+      (() => ({
+        damageMultiplier: 1.0,
+        hpMultiplier: 1.0,
+        costMultiplier: 1.0,
+        cooldownMultiplier: 1.0,
+      }));
   }
 
   /**
@@ -87,5 +102,23 @@ export class EconomyManager {
    */
   getGold(): number {
     return this.gold;
+  }
+
+  /**
+   * Check if a unit can be spawned with current gold.
+   * Applies upgrade cost modifier to the unit's base spawn cost.
+   * @param unitId - ID of the unit to check affordability for
+   * @returns true if current gold >= adjusted spawn cost
+   */
+  canSpend(unitId: string): boolean {
+    const unit = UNIT_DEFINITIONS[unitId];
+    if (!unit) {
+      return false;
+    }
+
+    const modifiers = this.getModifiers(unitId);
+    const adjustedCost = Math.floor(unit.spawnCost * modifiers.costMultiplier);
+
+    return this.gold >= adjustedCost;
   }
 }
