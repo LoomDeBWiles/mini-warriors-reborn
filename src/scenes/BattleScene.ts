@@ -204,11 +204,19 @@ export class BattleScene extends Phaser.Scene {
     for (const unit of playerUnits) {
       if (!unit.active) continue;
 
-      // Find nearest enemy
+      // Find nearest enemy unit
       const nearestEnemy = this.findNearestUnit(unit, enemyUnits);
-      const distanceToEnemy = nearestEnemy
-        ? Phaser.Math.Distance.Between(unit.x, unit.y, nearestEnemy.x, nearestEnemy.y)
-        : null;
+
+      // Calculate effective distance to enemy: prefer units, fall back to base
+      let distanceToEnemy: number | null;
+      let targetingBase = false;
+      if (nearestEnemy) {
+        distanceToEnemy = Phaser.Math.Distance.Between(unit.x, unit.y, nearestEnemy.x, nearestEnemy.y);
+      } else {
+        // No enemy units - target the enemy base
+        distanceToEnemy = Phaser.Math.Distance.Between(unit.x, unit.y, this.enemyBase.x, this.enemyBase.y);
+        targetingBase = true;
+      }
 
       // Find nearest damaged ally (for healers)
       let distanceToDamagedAlly: number | null = null;
@@ -242,7 +250,16 @@ export class BattleScene extends Phaser.Scene {
       }
 
       // Process attack/heal
-      unit.updateAttack(deltaMs);
+      if (targetingBase) {
+        // Attack the base if in range and cooldown ready
+        unit.tickAttackCooldown(deltaMs);
+        if (unit.canAttack() && distanceToEnemy !== null && distanceToEnemy <= unit.definition.range + 50) {
+          this.damageEnemyBase(unit.definition.damage);
+          unit.consumeAttackCooldown();
+        }
+      } else {
+        unit.updateAttack(deltaMs);
+      }
       unit.updateHeal(deltaMs);
       unit.updateFlyingBob(deltaMs);
     }
@@ -251,10 +268,19 @@ export class BattleScene extends Phaser.Scene {
     for (const enemy of enemyUnits) {
       if (!enemy.active) continue;
 
+      // Find nearest player unit
       const nearestPlayer = this.findNearestUnit(enemy, playerUnits);
-      const distanceToPlayer = nearestPlayer
-        ? Phaser.Math.Distance.Between(enemy.x, enemy.y, nearestPlayer.x, nearestPlayer.y)
-        : null;
+
+      // Calculate effective distance to player: prefer units, fall back to base
+      let distanceToPlayer: number | null;
+      let targetingBase = false;
+      if (nearestPlayer) {
+        distanceToPlayer = Phaser.Math.Distance.Between(enemy.x, enemy.y, nearestPlayer.x, nearestPlayer.y);
+      } else {
+        // No player units - target the player base
+        distanceToPlayer = Phaser.Math.Distance.Between(enemy.x, enemy.y, this.playerBase.x, this.playerBase.y);
+        targetingBase = true;
+      }
 
       enemy.updateStateMachine(distanceToPlayer, null);
 
@@ -271,7 +297,17 @@ export class BattleScene extends Phaser.Scene {
         }
       }
 
-      enemy.updateAttack(deltaMs);
+      // Process attack
+      if (targetingBase) {
+        // Attack the base if in range and cooldown ready
+        enemy.tickAttackCooldown(deltaMs);
+        if (enemy.canAttack() && distanceToPlayer !== null && distanceToPlayer <= enemy.definition.range + 50) {
+          this.damagePlayerBase(enemy.definition.damage);
+          enemy.consumeAttackCooldown();
+        }
+      } else {
+        enemy.updateAttack(deltaMs);
+      }
     }
   }
 

@@ -161,6 +161,32 @@ export class Unit extends Phaser.GameObjects.Container {
   }
 
   /**
+   * Check if unit can attack (cooldown is ready and in attacking/holding state).
+   */
+  canAttack(): boolean {
+    if (!this.active) return false;
+    const state = this.stateMachine.getState();
+    if (state !== UnitState.Attacking && state !== UnitState.Holding) return false;
+    return this.attackCooldown <= 0;
+  }
+
+  /**
+   * Consume the attack cooldown. Call after performing a base attack.
+   */
+  consumeAttackCooldown(): void {
+    this.attackCooldown = DEFAULT_ATTACK_COOLDOWN_MS;
+  }
+
+  /**
+   * Reduce attack cooldown by delta time. Call each frame when unit might attack base.
+   */
+  tickAttackCooldown(deltaMs: number): void {
+    if (this.attackCooldown > 0) {
+      this.attackCooldown -= deltaMs;
+    }
+  }
+
+  /**
    * Update attack logic. Call each frame with delta time.
    * When in Attacking or Holding state and target is valid, attacks at intervals.
    * Returns true if an attack was triggered this frame.
