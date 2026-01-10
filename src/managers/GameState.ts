@@ -241,6 +241,14 @@ export class GameState {
   }
 
   /**
+   * Add gems to the player's persistent balance.
+   */
+  addGems(amount: number): void {
+    if (amount <= 0) return;
+    this.data.gems += amount;
+  }
+
+  /**
    * Spend gold from the player's balance.
    * Returns true if successful, false if insufficient funds.
    */

@@ -543,6 +543,7 @@ export class BattleScene extends Phaser.Scene {
         const canUnlock = rewards.unitUnlock && gameState.canUnlockUnit(rewards.unitUnlock);
 
         gameState.addGold(rewards.totalGold);
+        gameState.addGems(rewards.gems);
 
         if (canUnlock && rewards.unitUnlock) {
           gameState.unlockUnit(rewards.unitUnlock);
