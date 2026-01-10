@@ -66,6 +66,9 @@ export class BattleScene extends Phaser.Scene {
       enemyBaseHp: this.enemyBaseHp,
     });
 
+    // Show wave 1 announcement
+    this.hud.showWaveAnnouncement(this.waveManager.getCurrentWave());
+
     // Pause button (top-right corner, below HUD)
     const pauseButton = this.add.text(GAME_WIDTH - 20, 70, '⏸', {
       fontSize: '32px',
@@ -183,6 +186,7 @@ export class BattleScene extends Phaser.Scene {
     const wave = this.waveManager.startNextWave();
     if (wave !== null) {
       this.hud.updateWave(wave, this.waveManager.getTotalWaves());
+      this.hud.showWaveAnnouncement(wave);
     }
   }
 
