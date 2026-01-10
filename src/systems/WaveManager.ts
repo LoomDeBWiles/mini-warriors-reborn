@@ -1,8 +1,17 @@
 import Phaser from 'phaser';
 import { AudioManager } from '../managers/AudioManager';
+import { WaveDefinition, SpawnDefinition, ENEMY_DEFINITIONS } from '../data/enemies';
+import { createEnemyUnit, EnemyUnit } from '../units/EnemyUnit';
 
 /** Enemy IDs considered bosses for audio announcements */
 const BOSS_ENEMY_IDS = new Set(['giant', 'dragon_boss', 'demon_lord']);
+
+/** Tracks spawning state for a single spawn group */
+interface SpawnState {
+  definition: SpawnDefinition;
+  spawnedCount: number;
+  nextSpawnTime: number;
+}
 
 /**
  * Manages wave spawning in battle. Triggers wave start fanfare when waves begin
@@ -10,13 +19,33 @@ const BOSS_ENEMY_IDS = new Set(['giant', 'dragon_boss', 'demon_lord']);
  */
 export class WaveManager {
   private scene: Phaser.Scene;
+  private waveDefinitions: WaveDefinition[];
   private currentWave: number;
-  private totalWaves: number;
+  private spawnX: number;
+  private spawnY: number;
+  private onEnemySpawn: (enemy: EnemyUnit) => void;
 
-  constructor(scene: Phaser.Scene, totalWaves: number) {
+  private waveActive: boolean;
+  private spawnStates: SpawnState[];
+  private waveStartTime: number;
+
+  constructor(
+    scene: Phaser.Scene,
+    waveDefinitions: WaveDefinition[],
+    spawnX: number,
+    spawnY: number,
+    onEnemySpawn: (enemy: EnemyUnit) => void
+  ) {
     this.scene = scene;
+    this.waveDefinitions = waveDefinitions;
     this.currentWave = 0;
-    this.totalWaves = totalWaves;
+    this.spawnX = spawnX;
+    this.spawnY = spawnY;
+    this.onEnemySpawn = onEnemySpawn;
+
+    this.waveActive = false;
+    this.spawnStates = [];
+    this.waveStartTime = 0;
   }
 
   /**
@@ -24,7 +53,7 @@ export class WaveManager {
    * Returns the wave number that was started, or null if all waves complete.
    */
   startNextWave(): number | null {
-    if (this.currentWave >= this.totalWaves) {
+    if (this.currentWave >= this.waveDefinitions.length) {
       return null;
     }
 
@@ -36,7 +65,55 @@ export class WaveManager {
       audioManager?.playSfx('wave_start');
     }
 
+    // Initialize spawn states for this wave
+    const waveDef = this.waveDefinitions[this.currentWave - 1];
+    this.waveStartTime = this.scene.time.now;
+    this.spawnStates = waveDef.spawns.map((spawn) => ({
+      definition: spawn,
+      spawnedCount: 0,
+      nextSpawnTime: this.waveStartTime + spawn.spawnDelay,
+    }));
+    this.waveActive = true;
+
     return this.currentWave;
+  }
+
+  /**
+   * Update spawning logic. Call every frame from scene update.
+   * Spawns enemies according to wave definition timing.
+   */
+  update(): void {
+    if (!this.waveActive) return;
+
+    const now = this.scene.time.now;
+    let allComplete = true;
+
+    for (const state of this.spawnStates) {
+      if (state.spawnedCount >= state.definition.count) continue;
+
+      allComplete = false;
+
+      if (now >= state.nextSpawnTime) {
+        this.spawnEnemy(state.definition.enemyId);
+        state.spawnedCount++;
+        state.nextSpawnTime = now + state.definition.spawnInterval;
+      }
+    }
+
+    if (allComplete) {
+      this.waveActive = false;
+    }
+  }
+
+  private spawnEnemy(enemyId: string): void {
+    if (!ENEMY_DEFINITIONS[enemyId]) {
+      console.warn(`WaveManager: Unknown enemy ID "${enemyId}"`);
+      return;
+    }
+
+    const enemy = createEnemyUnit(this.scene, enemyId, this.spawnX, this.spawnY);
+    this.notifyEnemySpawn(enemyId);
+    this.onEnemySpawn(enemy);
   }
 
   getCurrentWave(): number {
@@ -44,18 +121,21 @@ export class WaveManager {
   }
 
   getTotalWaves(): number {
-    return this.totalWaves;
+    return this.waveDefinitions.length;
   }
 
   isComplete(): boolean {
-    return this.currentWave >= this.totalWaves;
+    return this.currentWave >= this.waveDefinitions.length && !this.waveActive;
+  }
+
+  isWaveActive(): boolean {
+    return this.waveActive;
   }
 
   /**
    * Notify that an enemy is spawning. Plays boss spawn sound for boss enemies.
-   * Call this when creating each enemy unit.
    */
-  notifyEnemySpawn(enemyId: string): void {
+  private notifyEnemySpawn(enemyId: string): void {
     if (BOSS_ENEMY_IDS.has(enemyId)) {
       const audioManager = AudioManager.getInstance(this.scene);
       audioManager?.playSfx('boss_spawn');
