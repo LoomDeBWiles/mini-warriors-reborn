@@ -5,6 +5,9 @@ const HUD_HEIGHT = 60;
 const WAVE_BANNER_SLIDE_DURATION = 400;
 const WAVE_BANNER_HOLD_DURATION = 1200;
 const HUD_PADDING = 20;
+const GOLD_FLASH_DURATION = 300;
+const GOLD_FEEDBACK_FLOAT_DISTANCE = 20;
+const GOLD_FEEDBACK_DURATION = 800;
 const HP_BAR_WIDTH = 200;
 const HP_BAR_HEIGHT = 20;
 const PLAYER_HP_COLOR = 0x4ade80;
@@ -24,6 +27,7 @@ interface HUDConfig {
  */
 export class HUD extends Phaser.GameObjects.Container {
   private goldText: Phaser.GameObjects.Text;
+  private currentGold: number;
   private waveText: Phaser.GameObjects.Text;
 
   private playerHpFill: Phaser.GameObjects.Rectangle;
@@ -36,6 +40,7 @@ export class HUD extends Phaser.GameObjects.Container {
 
   constructor(config: HUDConfig) {
     super(config.scene, 0, 0);
+    this.currentGold = config.initialGold;
 
     // HUD background
     const bg = this.scene.add.rectangle(
@@ -151,8 +156,53 @@ export class HUD extends Phaser.GameObjects.Container {
     return { fill, text };
   }
 
-  updateGold(amount: number): void {
-    this.goldText.setText(`Gold: ${amount}`);
+  updateGold(newAmount: number): void {
+    const delta = newAmount - this.currentGold;
+    this.currentGold = newAmount;
+    this.goldText.setText(`Gold: ${newAmount}`);
+
+    if (delta === 0) {
+      return;
+    }
+
+    // Flash the gold text
+    this.scene.tweens.add({
+      targets: this.goldText,
+      scaleX: 1.2,
+      scaleY: 1.2,
+      duration: GOLD_FLASH_DURATION / 2,
+      yoyo: true,
+      ease: 'Quad.easeOut',
+    });
+
+    // Show floating +/- feedback
+    const sign = delta > 0 ? '+' : '';
+    const color = delta > 0 ? '#4ade80' : '#ef4444';
+    const feedbackText = this.scene.add.text(
+      this.goldText.x + this.goldText.width + 10,
+      this.goldText.y,
+      `${sign}${delta}`,
+      {
+        fontSize: '18px',
+        color,
+        fontStyle: 'bold',
+        stroke: '#000000',
+        strokeThickness: 2,
+      }
+    );
+    feedbackText.setOrigin(0, 0.5);
+    feedbackText.setDepth(1001);
+
+    this.scene.tweens.add({
+      targets: feedbackText,
+      y: feedbackText.y - GOLD_FEEDBACK_FLOAT_DISTANCE,
+      alpha: 0,
+      duration: GOLD_FEEDBACK_DURATION,
+      ease: 'Quad.easeOut',
+      onComplete: () => {
+        feedbackText.destroy();
+      },
+    });
   }
 
   updateWave(current: number, total: number): void {
