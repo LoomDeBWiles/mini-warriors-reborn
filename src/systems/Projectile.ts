@@ -34,9 +34,11 @@ export class Projectile extends Phaser.GameObjects.Arc {
     this.splashRadius = config.attacker.definition.splashRadius ?? 0;
 
     this.scene.add.existing(this);
+    // Register for automatic preUpdate calls each frame
+    this.addToUpdateList();
   }
 
-  update(_time: number, delta: number): void {
+  preUpdate(_time: number, delta: number): void {
     if (!this.target.active) {
       this.destroy();
       return;
