@@ -134,7 +134,7 @@ export class BattleScene extends Phaser.Scene {
     this.events.on('resume', () => this.onResume());
 
     // Listen for gold earned from enemy kills
-    this.events.on('gold-earned', (data: { amount: number }) => this.addGold(data.amount));
+    this.events.on('gold-earned', (data: { amount: number }) => this.addKillGold(data.amount));
 
     // Listen for enemy deaths to track wave completion
     this.events.on('enemy-killed', () => this.waveManager.notifyEnemyKilled());
@@ -144,7 +144,7 @@ export class BattleScene extends Phaser.Scene {
     const goldMineLevel = gameState?.castleUpgrades['goldMine'] ?? 0;
     this.economyManager = new EconomyManager(this, 0, undefined, goldMineLevel);
     this.events.on('gold-changed', (data: { gold: number; added: number }) => {
-      this.addGold(data.added);
+      this.addPassiveGold(data.added);
     });
 
     // Stage info (temporary, for debugging)
@@ -403,9 +403,15 @@ export class BattleScene extends Phaser.Scene {
 
   // Public methods for game systems to update HUD
 
-  addGold(amount: number): void {
+  addKillGold(amount: number): void {
     this.gold += amount;
     this.killGold += amount;
+    this.hud.updateGold(this.gold);
+    this.spawnBar.updateGold(this.gold);
+  }
+
+  addPassiveGold(amount: number): void {
+    this.gold += amount;
     this.hud.updateGold(this.gold);
     this.spawnBar.updateGold(this.gold);
   }
