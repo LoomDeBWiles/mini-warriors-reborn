@@ -2,6 +2,10 @@ import Phaser from 'phaser';
 import { UnitDefinition } from '../data/units';
 import { HealthBar } from '../ui/HealthBar';
 import { showDamageNumber } from '../ui/DamageNumbers';
+import { StateMachine, UnitState, TransitionContext } from './StateMachine';
+
+// Re-export UnitState for consumers
+export { UnitState };
 
 interface UnitConfig {
   scene: Phaser.Scene;
@@ -17,6 +21,7 @@ export class Unit extends Phaser.GameObjects.Container {
   readonly definition: UnitDefinition;
   private healthBar: HealthBar;
   private sprite: Phaser.GameObjects.Arc;
+  protected stateMachine: StateMachine;
 
   constructor(config: UnitConfig) {
     super(config.scene, config.x, config.y);
@@ -31,7 +36,38 @@ export class Unit extends Phaser.GameObjects.Container {
     });
     this.add(this.healthBar);
 
+    this.stateMachine = new StateMachine(UnitState.Moving, (oldState, newState) => {
+      this.onStateChange(oldState, newState);
+    });
+
     this.scene.add.existing(this);
+  }
+
+  /**
+   * Called when state machine transitions to a new state.
+   * Override in subclasses for state-specific behavior.
+   */
+  protected onStateChange(_oldState: UnitState, _newState: UnitState): void {
+    // Base implementation does nothing - subclasses override
+  }
+
+  /**
+   * Update the unit's state machine with current battlefield context.
+   * Call every frame with distance to nearest enemy.
+   */
+  updateStateMachine(distanceToEnemy: number | null): void {
+    const context: TransitionContext = {
+      distanceToEnemy,
+      attackRange: this.definition.range,
+    };
+    this.stateMachine.update(context);
+  }
+
+  /**
+   * Get the current state of the unit.
+   */
+  getState(): UnitState {
+    return this.stateMachine.getState();
   }
 
   takeDamage(amount: number): void {
