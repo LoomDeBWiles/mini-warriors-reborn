@@ -60,7 +60,7 @@ export class UpgradeScene extends Phaser.Scene {
     this.createUnitPanel();
 
     // Select first unlocked unit by default
-    const unlockedUnits = getUnlockedUnits(gameState.highestStage);
+    const unlockedUnits = getUnlockedUnits(gameState.unlockedUnits);
     if (unlockedUnits.length > 0) {
       this.selectUnit(unlockedUnits[0].id);
     }
@@ -372,7 +372,7 @@ export class UpgradeScene extends Phaser.Scene {
 
   private createUnitPanel(): void {
     const gameState = this.getGameState();
-    const unlockedUnits = getUnlockedUnits(gameState.highestStage);
+    const unlockedUnits = getUnlockedUnits(gameState.unlockedUnits);
 
     const container = this.add.container(0, 0);
     this.unitPanel = container;

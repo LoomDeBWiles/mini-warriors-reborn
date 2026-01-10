@@ -159,9 +159,9 @@ export const UNIT_IDS = Object.keys(UNIT_DEFINITIONS).sort(
   (a, b) => UNIT_DEFINITIONS[a].unlockStage - UNIT_DEFINITIONS[b].unlockStage
 );
 
-/** Get units unlocked at or before a given stage */
-export function getUnlockedUnits(highestStage: number): UnitDefinition[] {
-  return UNIT_IDS.filter((id) => UNIT_DEFINITIONS[id].unlockStage <= highestStage).map(
+/** Get unit definitions for the given unlocked unit IDs */
+export function getUnlockedUnits(unlockedUnits: readonly string[]): UnitDefinition[] {
+  return UNIT_IDS.filter((id) => unlockedUnits.includes(id)).map(
     (id) => UNIT_DEFINITIONS[id]
   );
 }

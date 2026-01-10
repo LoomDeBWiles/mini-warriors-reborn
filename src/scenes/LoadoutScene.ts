@@ -41,10 +41,9 @@ export class LoadoutScene extends Phaser.Scene {
     });
     title.setOrigin(0.5);
 
-    // Get unlocked units based on highest stage reached
+    // Get unlocked units from game state
     const gameState = GameState.getInstance(this);
-    const highestStage = gameState?.highestStage ?? this.stageId;
-    const unlockedUnits = getUnlockedUnits(highestStage);
+    const unlockedUnits = getUnlockedUnits(gameState?.unlockedUnits ?? ['swordsman']);
 
     // Create loadout grid (self-registers with scene)
     new LoadoutGrid({
