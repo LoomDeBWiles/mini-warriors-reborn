@@ -3,7 +3,9 @@ import { GAME_WIDTH, GAME_HEIGHT } from '../config';
 import { AudioManager } from '../managers/AudioManager';
 import { MUSIC_KEYS } from '../data/audio';
 import { HUD } from '../ui/HUD';
+import { SpawnBar } from '../ui/SpawnBar';
 import { WaveManager } from '../systems/WaveManager';
+import { UNIT_DEFINITIONS } from '../data/units';
 
 const INITIAL_GOLD = 50;
 const PLAYER_BASE_HP = 1000;
@@ -26,7 +28,9 @@ export class BattleScene extends Phaser.Scene {
   private enemyBaseHp = ENEMY_BASE_HP;
 
   private hud!: HUD;
+  private spawnBar!: SpawnBar;
   private waveManager!: WaveManager;
+  private loadout: string[] = [];
 
   constructor() {
     super({ key: 'battle' });
@@ -34,6 +38,7 @@ export class BattleScene extends Phaser.Scene {
 
   init(data: BattleSceneData): void {
     this.stageId = data.stageId ?? 1;
+    this.loadout = data.loadout ?? [];
 
     // Reset battle state
     this.gold = INITIAL_GOLD;
@@ -73,11 +78,29 @@ export class BattleScene extends Phaser.Scene {
     pauseButton.setDepth(1001);
 
     // Stage info (temporary, for debugging)
-    const stageInfo = this.add.text(20, GAME_HEIGHT - 30, `Stage ${this.stageId}`, {
+    const stageInfo = this.add.text(20, GAME_HEIGHT - 100, `Stage ${this.stageId}`, {
       fontSize: '16px',
       color: '#666666',
     });
     stageInfo.setOrigin(0, 1);
+
+    // Create spawn bar
+    this.spawnBar = new SpawnBar({
+      scene: this,
+      loadout: this.loadout,
+      onSpawn: (unitId) => this.handleSpawn(unitId),
+    });
+    this.spawnBar.updateGold(this.gold);
+  }
+
+  private handleSpawn(unitId: string): void {
+    const unit = UNIT_DEFINITIONS[unitId];
+    if (!unit) return;
+
+    if (this.spendGold(unit.spawnCost)) {
+      console.log(`Spawning ${unit.name}`);
+      // Unit spawning will be implemented in a future bead
+    }
   }
 
   // Public methods for game systems to update HUD
@@ -85,12 +108,14 @@ export class BattleScene extends Phaser.Scene {
   addGold(amount: number): void {
     this.gold += amount;
     this.hud.updateGold(this.gold);
+    this.spawnBar.updateGold(this.gold);
   }
 
   spendGold(amount: number): boolean {
     if (this.gold >= amount) {
       this.gold -= amount;
       this.hud.updateGold(this.gold);
+      this.spawnBar.updateGold(this.gold);
       return true;
     }
     return false;
