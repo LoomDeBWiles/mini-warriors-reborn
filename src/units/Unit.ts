@@ -21,6 +21,8 @@ const FLY_BOB_AMPLITUDE = 8;
 const FLY_BOB_SPEED = 3;
 /** Default attack cooldown in milliseconds */
 const DEFAULT_ATTACK_COOLDOWN_MS = 1000;
+/** Duration of death animation in milliseconds */
+const DEATH_ANIMATION_MS = 400;
 
 /**
  * A unit on the battlefield with a health bar that follows its position.
@@ -181,14 +183,37 @@ export class Unit extends Phaser.GameObjects.Container {
   }
 
   takeDamage(amount: number): void {
+    // Ignore damage if already dying
+    if (this.stateMachine.getState() === UnitState.Dying) {
+      return;
+    }
+
     showDamageNumber(this.scene, this.x, this.y, amount);
 
     const newHp = this.healthBar.getHp() - amount;
     this.healthBar.setHp(newHp);
 
     if (newHp <= 0) {
-      this.destroy();
+      this.stateMachine.transitionToDying();
+      this.playDeathAnimation();
     }
+  }
+
+  /**
+   * Play death animation and destroy unit when complete.
+   */
+  private playDeathAnimation(): void {
+    this.scene.tweens.add({
+      targets: this,
+      alpha: 0,
+      scaleX: 0.5,
+      scaleY: 0.5,
+      duration: DEATH_ANIMATION_MS,
+      ease: 'Quad.easeOut',
+      onComplete: () => {
+        this.destroy();
+      },
+    });
   }
 
   getHp(): number {

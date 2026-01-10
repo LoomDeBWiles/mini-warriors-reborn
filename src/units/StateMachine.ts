@@ -6,6 +6,7 @@ export enum UnitState {
   Attacking = 'attacking',
   Holding = 'holding',
   Healing = 'healing',
+  Dying = 'dying',
 }
 
 /**
@@ -60,7 +61,22 @@ export class StateMachine {
     }
   }
 
+  /**
+   * Force transition to Dying state. This is a terminal state with no exit.
+   */
+  transitionToDying(): void {
+    if (this.state === UnitState.Dying) return;
+    const oldState = this.state;
+    this.state = UnitState.Dying;
+    this.onStateChange?.(oldState, UnitState.Dying);
+  }
+
   private evaluateTransition(context: TransitionContext): UnitState {
+    // Dying is a terminal state - no transitions out
+    if (this.state === UnitState.Dying) {
+      return UnitState.Dying;
+    }
+
     const { distanceToEnemy, attackRange, isTank, isHealer, distanceToDamagedAlly } = context;
 
     // Healers prioritize healing damaged allies over attacking
