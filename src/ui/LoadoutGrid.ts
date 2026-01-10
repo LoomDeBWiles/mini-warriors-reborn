@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { GAME_WIDTH } from '../config';
 import { UnitDefinition } from '../data/units';
 
 const CARD_WIDTH = 100;
@@ -30,6 +31,10 @@ export class LoadoutGrid extends Phaser.GameObjects.Container {
   private unitCards: Map<string, Phaser.GameObjects.Container> = new Map();
   private slotContainers: Phaser.GameObjects.Container[] = [];
 
+  private tooltip: Phaser.GameObjects.Container | null = null;
+  private tooltipBg: Phaser.GameObjects.Rectangle | null = null;
+  private tooltipText: Phaser.GameObjects.Text | null = null;
+
   constructor(config: LoadoutGridConfig) {
     super(config.scene, config.x, config.y);
     this.availableUnits = config.availableUnits;
@@ -39,6 +44,7 @@ export class LoadoutGrid extends Phaser.GameObjects.Container {
     this.scene.add.existing(this);
     this.createUnitGrid();
     this.createLoadoutSlots();
+    this.createTooltip();
   }
 
   private createUnitGrid(): void {
@@ -103,9 +109,11 @@ export class LoadoutGrid extends Phaser.GameObjects.Container {
     bg.setInteractive({ useHandCursor: true });
     bg.on('pointerover', () => {
       bg.setFillStyle(0x4a4a5a);
+      this.showTooltip(unit, x, y);
     });
     bg.on('pointerout', () => {
       this.updateCardHighlight(unit.id);
+      this.hideTooltip();
     });
     bg.on('pointerdown', () => {
       this.toggleUnitSelection(unit.id);
@@ -263,5 +271,63 @@ export class LoadoutGrid extends Phaser.GameObjects.Container {
       .filter((id) => this.availableUnits.some((u) => u.id === id))
       .slice(0, this.maxLoadoutSize);
     this.updateDisplay();
+  }
+
+  private createTooltip(): void {
+    this.tooltipText = this.scene.add.text(0, 0, '', {
+      fontSize: '14px',
+      color: '#ffffff',
+      align: 'left',
+      lineSpacing: 4,
+    });
+
+    this.tooltipBg = this.scene.add.rectangle(0, 0, 10, 10, 0x222222, 0.95);
+    this.tooltipBg.setStrokeStyle(1, 0x666666);
+
+    this.tooltip = this.scene.add.container(0, 0, [this.tooltipBg, this.tooltipText]);
+    this.tooltip.setVisible(false);
+    this.tooltip.setDepth(100);
+  }
+
+  private showTooltip(unit: UnitDefinition, cardX: number, cardY: number): void {
+    if (!this.tooltip || !this.tooltipBg || !this.tooltipText) return;
+
+    const rangeText = unit.range > 0 ? `${unit.range}px` : 'Melee';
+    const content = `HP: ${unit.hp}\nDMG: ${unit.damage}\nRange: ${rangeText}`;
+
+    this.tooltipText.setText(content);
+    this.tooltipText.setOrigin(0, 0);
+
+    const padding = 10;
+    const width = this.tooltipText.width + padding * 2;
+    const height = this.tooltipText.height + padding * 2;
+
+    this.tooltipBg.setSize(width, height);
+    this.tooltipBg.setOrigin(0, 0);
+
+    this.tooltipText.setPosition(padding, padding);
+
+    // Convert local card position to world coordinates
+    const worldX = this.x + cardX + CARD_WIDTH / 2;
+    const worldY = this.y + cardY;
+
+    // Position tooltip above the card
+    let tooltipX = worldX - width / 2;
+    let tooltipY = worldY - height - 10;
+
+    // Clamp to screen edges
+    tooltipX = Math.max(10, Math.min(tooltipX, GAME_WIDTH - width - 10));
+    if (tooltipY < 10) {
+      tooltipY = worldY + CARD_HEIGHT + 10;
+    }
+
+    this.tooltip.setPosition(tooltipX, tooltipY);
+    this.tooltip.setVisible(true);
+  }
+
+  private hideTooltip(): void {
+    if (this.tooltip) {
+      this.tooltip.setVisible(false);
+    }
   }
 }
