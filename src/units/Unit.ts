@@ -3,6 +3,7 @@ import { UnitDefinition } from '../data/units';
 import { HealthBar } from '../ui/HealthBar';
 import { showDamageNumber } from '../ui/DamageNumbers';
 import { StateMachine, UnitState, TransitionContext } from './StateMachine';
+import { processAttack, fireProjectile } from '../systems/CombatSystem';
 
 // Re-export UnitState for consumers
 export { UnitState };
@@ -18,6 +19,8 @@ interface UnitConfig {
 const FLY_BOB_AMPLITUDE = 8;
 /** Speed of flying unit bob (radians per second) */
 const FLY_BOB_SPEED = 3;
+/** Default attack cooldown in milliseconds */
+const DEFAULT_ATTACK_COOLDOWN_MS = 1000;
 
 /**
  * A unit on the battlefield with a health bar that follows its position.
@@ -31,6 +34,10 @@ export class Unit extends Phaser.GameObjects.Container {
   private flyTime = 0;
   /** Current y offset from flying bob */
   private flyOffset = 0;
+  /** Time remaining before next attack in milliseconds */
+  private attackCooldown = 0;
+  /** Current attack target */
+  private attackTarget: Unit | null = null;
 
   constructor(config: UnitConfig) {
     super(config.scene, config.x, config.y);
@@ -115,6 +122,62 @@ export class Unit extends Phaser.GameObjects.Container {
    */
   getFlyingOffset(): number {
     return this.flyOffset;
+  }
+
+  /**
+   * Set the current attack target.
+   */
+  setAttackTarget(target: Unit | null): void {
+    this.attackTarget = target;
+  }
+
+  /**
+   * Get the current attack target.
+   */
+  getAttackTarget(): Unit | null {
+    return this.attackTarget;
+  }
+
+  /**
+   * Update attack logic. Call each frame with delta time.
+   * When in Attacking state and target is valid, attacks at intervals.
+   * Returns true if an attack was triggered this frame.
+   */
+  updateAttack(deltaMs: number): boolean {
+    // Reduce cooldown
+    if (this.attackCooldown > 0) {
+      this.attackCooldown -= deltaMs;
+    }
+
+    // Only attack when in attacking state
+    if (this.stateMachine.getState() !== UnitState.Attacking) {
+      return false;
+    }
+
+    // Need a valid target
+    if (!this.attackTarget || !this.attackTarget.active) {
+      this.attackTarget = null;
+      return false;
+    }
+
+    // Wait for cooldown
+    if (this.attackCooldown > 0) {
+      return false;
+    }
+
+    // Reset cooldown
+    this.attackCooldown = DEFAULT_ATTACK_COOLDOWN_MS;
+
+    // Perform attack based on range
+    if (this.definition.range > 0) {
+      // Ranged attack - fire projectile
+      fireProjectile(this, this.attackTarget);
+    } else {
+      // Melee attack - direct damage
+      processAttack(this, this.attackTarget);
+    }
+
+    return true;
   }
 
   takeDamage(amount: number): void {
