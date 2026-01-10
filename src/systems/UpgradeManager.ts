@@ -1,5 +1,20 @@
 import { GameStateData, UnitUpgrades } from '../managers/GameState';
-import { UpgradePath, getUpgradeCost, canPurchaseTier } from '../data/upgrades';
+import {
+  UpgradePath,
+  getUpgradeCost,
+  canPurchaseTier,
+  getOffenseMultiplier,
+  getDefenseMultiplier,
+  getSpawnCostMultiplier,
+  getCooldownMultiplier,
+} from '../data/upgrades';
+
+export interface StatModifiers {
+  damageMultiplier: number;
+  hpMultiplier: number;
+  costMultiplier: number;
+  cooldownMultiplier: number;
+}
 
 /**
  * Manages unit upgrade purchases.
@@ -49,5 +64,29 @@ export class UpgradeManager {
       this.state.unitUpgrades[unitId] = { offense: 0, defense: 0, utility: 0 };
     }
     return this.state.unitUpgrades[unitId];
+  }
+
+  /**
+   * Get stat multipliers based on unit's purchased upgrades.
+   * @param unitId - ID of the unit
+   * @returns Combined stat modifiers from all upgrade paths
+   */
+  getModifiers(unitId: string): StatModifiers {
+    const upgrades = this.state.unitUpgrades[unitId];
+    if (!upgrades) {
+      return {
+        damageMultiplier: 1.0,
+        hpMultiplier: 1.0,
+        costMultiplier: 1.0,
+        cooldownMultiplier: 1.0,
+      };
+    }
+
+    return {
+      damageMultiplier: getOffenseMultiplier(upgrades.offense),
+      hpMultiplier: getDefenseMultiplier(upgrades.defense),
+      costMultiplier: getSpawnCostMultiplier(upgrades.utility),
+      cooldownMultiplier: getCooldownMultiplier(upgrades.utility),
+    };
   }
 }
