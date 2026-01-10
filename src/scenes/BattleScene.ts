@@ -73,11 +73,11 @@ export class BattleScene extends Phaser.Scene {
     });
     pauseButton.setOrigin(1, 0);
     pauseButton.setInteractive({ useHandCursor: true });
-    pauseButton.on('pointerdown', () => {
-      this.scene.pause();
-      this.scene.launch('pause', { pausedScene: 'battle' });
-    });
+    pauseButton.on('pointerdown', () => this.pauseBattle());
     pauseButton.setDepth(1001);
+
+    // Escape key to pause
+    this.input.keyboard?.on('keydown-ESC', () => this.pauseBattle());
 
     // Stage info (temporary, for debugging)
     const stageInfo = this.add.text(20, GAME_HEIGHT - 100, `Stage ${this.stageId}`, {
@@ -200,5 +200,16 @@ export class BattleScene extends Phaser.Scene {
     if (hpRatio >= 0.8) return 3;
     if (hpRatio >= 0.5) return 2;
     return 1;
+  }
+
+  /**
+   * Pause the battle: freeze physics, tweens, and launch pause overlay.
+   */
+  private pauseBattle(): void {
+    if (this.scene.isPaused()) return;
+    this.physics.pause();
+    this.tweens.pauseAll();
+    this.scene.pause();
+    this.scene.launch('pause', { pausedScene: 'battle' });
   }
 }
