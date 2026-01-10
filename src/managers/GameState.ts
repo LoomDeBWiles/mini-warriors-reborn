@@ -198,4 +198,18 @@ export class GameState {
   get castleUpgrades(): CastleUpgrades {
     return this.data.castleUpgrades;
   }
+
+  get unlockedUnits(): readonly string[] {
+    return this.data.unlockedUnits;
+  }
+
+  /**
+   * Unlock a unit if not already unlocked.
+   * Duplicates are silently ignored.
+   */
+  unlockUnit(unitId: string): void {
+    if (!this.data.unlockedUnits.includes(unitId)) {
+      this.data.unlockedUnits.push(unitId);
+    }
+  }
 }
