@@ -5,7 +5,6 @@ import { MUSIC_KEYS } from '../data/audio';
 import { HUD } from '../ui/HUD';
 import { SpawnBar } from '../ui/SpawnBar';
 import { WaveManager } from '../systems/WaveManager';
-import { UNIT_DEFINITIONS } from '../data/units';
 import { WaveDefinition } from '../data/enemies';
 import { EnemyUnit } from '../units/EnemyUnit';
 import { PlayerUnit, createPlayerUnit } from '../units/PlayerUnit';
@@ -193,10 +192,10 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private handleSpawn(unitId: string): void {
-    const unit = UNIT_DEFINITIONS[unitId];
-    if (!unit) return;
+    const effectiveCost = this.spawnBar.getEffectiveSpawnCost(unitId);
+    if (effectiveCost === undefined) return;
 
-    if (this.spendGold(unit.spawnCost)) {
+    if (this.spendGold(effectiveCost)) {
       this.spawnBar.startCooldown(unitId);
       this.spawnUnit(unitId);
     }

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config';
 import { UnitDefinition, UNIT_DEFINITIONS } from '../data/units';
+import { getEffectiveSpawnStats } from '../units/PlayerUnit';
 
 const SPAWN_BAR_HEIGHT = 80;
 const BUTTON_WIDTH = 90;
@@ -28,6 +29,8 @@ interface SpawnButtonState {
   cooldownOverlay: Phaser.GameObjects.Rectangle;
   cooldownArc: Phaser.GameObjects.Graphics;
   unit: UnitDefinition;
+  effectiveSpawnCost: number;
+  effectiveCooldownMs: number;
   isAffordable: boolean;
   cooldownEndTime: number;
 }
@@ -83,6 +86,9 @@ export class SpawnBar extends Phaser.GameObjects.Container {
   private createSpawnButton(unit: UnitDefinition, x: number): SpawnButtonState {
     const container = this.scene.add.container(x, BUTTON_Y_OFFSET + BUTTON_HEIGHT / 2);
 
+    // Get effective costs with utility upgrades applied
+    const effectiveStats = getEffectiveSpawnStats(this.scene, unit.id);
+
     // Button background
     const bg = this.scene.add.rectangle(0, 0, BUTTON_WIDTH, BUTTON_HEIGHT, ENABLED_BG_COLOR);
     bg.setStrokeStyle(2, ENABLED_STROKE_COLOR);
@@ -96,8 +102,8 @@ export class SpawnBar extends Phaser.GameObjects.Container {
     nameText.setOrigin(0.5);
     container.add(nameText);
 
-    // Cost indicator
-    const costText = this.scene.add.text(0, 12, `${unit.spawnCost}g`, {
+    // Cost indicator (shows effective cost with upgrades applied)
+    const costText = this.scene.add.text(0, 12, `${effectiveStats.spawnCost}g`, {
       fontSize: '12px',
       color: GOLD_COLOR,
     });
@@ -152,6 +158,8 @@ export class SpawnBar extends Phaser.GameObjects.Container {
       cooldownOverlay,
       cooldownArc,
       unit,
+      effectiveSpawnCost: effectiveStats.spawnCost,
+      effectiveCooldownMs: effectiveStats.cooldownMs,
       isAffordable: true,
       cooldownEndTime: 0,
     };
@@ -168,7 +176,7 @@ export class SpawnBar extends Phaser.GameObjects.Container {
   updateGold(gold: number): void {
     for (const button of this.buttons) {
       const wasAffordable = button.isAffordable;
-      button.isAffordable = gold >= button.unit.spawnCost;
+      button.isAffordable = gold >= button.effectiveSpawnCost;
 
       if (wasAffordable !== button.isAffordable) {
         this.updateButtonAppearance(button);
@@ -215,8 +223,17 @@ export class SpawnBar extends Phaser.GameObjects.Container {
     const button = this.buttons.find((b) => b.unit.id === unitId);
     if (!button) return;
 
-    button.cooldownEndTime = this.scene.time.now + button.unit.cooldownMs;
+    button.cooldownEndTime = this.scene.time.now + button.effectiveCooldownMs;
     this.updateButtonAppearance(button);
+  }
+
+  /**
+   * Get the effective spawn cost for a unit (with upgrades applied).
+   * Returns undefined if unit is not in the spawn bar.
+   */
+  getEffectiveSpawnCost(unitId: string): number | undefined {
+    const button = this.buttons.find((b) => b.unit.id === unitId);
+    return button?.effectiveSpawnCost;
   }
 
   /**
@@ -238,7 +255,7 @@ export class SpawnBar extends Phaser.GameObjects.Container {
   private drawCooldownArc(button: SpawnButtonState): void {
     const now = this.scene.time.now;
     const remaining = button.cooldownEndTime - now;
-    const progress = remaining / button.unit.cooldownMs;
+    const progress = remaining / button.effectiveCooldownMs;
 
     const arcRadius = Math.min(BUTTON_WIDTH, BUTTON_HEIGHT) / 2 - 8;
     const startAngle = -Math.PI / 2; // Top of circle

@@ -46,6 +46,28 @@ function applyUpgrades(
 }
 
 /**
+ * Get effective spawn cost and cooldown for a unit, applying utility upgrades.
+ * Returns base values if no upgrades or GameState unavailable.
+ */
+export function getEffectiveSpawnStats(
+  scene: Phaser.Scene,
+  unitId: string
+): { spawnCost: number; cooldownMs: number } {
+  const baseDefinition = UNIT_DEFINITIONS[unitId];
+  if (!baseDefinition) {
+    throw new Error(`Unknown unit ID: ${unitId}`);
+  }
+
+  const gameState = GameState.getInstance(scene);
+  const utilityTier = gameState?.unitUpgrades[unitId]?.utility ?? 0;
+
+  return {
+    spawnCost: Math.round(baseDefinition.spawnCost * getSpawnCostMultiplier(utilityTier)),
+    cooldownMs: Math.round(baseDefinition.cooldownMs * getCooldownMultiplier(utilityTier)),
+  };
+}
+
+/**
  * Create a player unit from a unit definition.
  * Applies upgrade multipliers from GameState if available.
  * @param scene - The Phaser scene
