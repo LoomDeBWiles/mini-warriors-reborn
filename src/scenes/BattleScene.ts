@@ -90,13 +90,42 @@ export class BattleScene extends Phaser.Scene {
     this.spawnBar = new SpawnBar({
       scene: this,
       loadout: this.loadout,
-      onSpawn: (unitId) => this.handleSpawn(unitId),
+      onSpawn: (unitId) => this.handleSpawnInput(unitId),
     });
     this.spawnBar.updateGold(this.gold);
+
+    // Setup keyboard input for spawning (keys 1-5)
+    this.setupSpawnKeyboardInput();
+  }
+
+  private setupSpawnKeyboardInput(): void {
+    const keyboard = this.input.keyboard;
+    if (!keyboard) return;
+
+    // Keys 1-5 map to loadout slots 0-4
+    const spawnKeys = ['ONE', 'TWO', 'THREE', 'FOUR', 'FIVE'] as const;
+    spawnKeys.forEach((keyName, slotIndex) => {
+      keyboard.on(`keydown-${keyName}`, () => {
+        const unitId = this.loadout[slotIndex];
+        if (unitId) {
+          this.handleSpawnInput(unitId);
+        }
+      });
+    });
   }
 
   update(): void {
     this.spawnBar.update();
+  }
+
+  /**
+   * Handle spawn input from keyboard or touch.
+   * Emits 'spawn-unit' event and triggers the spawn if affordable.
+   */
+  private handleSpawnInput(unitId: string): void {
+    console.log('Spawn input received:', { unitId });
+    this.events.emit('spawn-unit', { unitId });
+    this.handleSpawn(unitId);
   }
 
   private handleSpawn(unitId: string): void {
@@ -106,7 +135,6 @@ export class BattleScene extends Phaser.Scene {
     if (this.spendGold(unit.spawnCost)) {
       this.spawnBar.startCooldown(unitId);
       console.log(`Spawning ${unit.name}`);
-      // Unit spawning will be implemented in a future bead
     }
   }
 
