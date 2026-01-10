@@ -182,11 +182,12 @@ export class BattleScene extends Phaser.Scene {
   }
 
   /**
-   * Update all unit AI: state machines, targets, combat, and healing.
+   * Update all unit AI: state machines, targets, combat, movement, and healing.
    */
   private updateUnitAI(deltaMs: number): void {
     const playerUnits = this.playerUnits.getChildren() as PlayerUnit[];
     const enemyUnits = this.enemyUnits.getChildren() as EnemyUnit[];
+    const deltaSeconds = deltaMs / 1000;
 
     // Update player unit AI
     for (const unit of playerUnits) {
@@ -224,13 +225,18 @@ export class BattleScene extends Phaser.Scene {
         unit.setHealTarget(nearestDamagedAlly);
       }
 
+      // Move player units right toward enemy base when in Moving state
+      if (state === UnitState.Moving) {
+        unit.x += unit.definition.speed * deltaSeconds;
+      }
+
       // Process attack/heal
       unit.updateAttack(deltaMs);
       unit.updateHeal(deltaMs);
       unit.updateFlyingBob(deltaMs);
     }
 
-    // Update enemy unit AI (simplified - enemies just attack players)
+    // Update enemy unit AI
     for (const enemy of enemyUnits) {
       if (!enemy.active) continue;
 
@@ -245,8 +251,40 @@ export class BattleScene extends Phaser.Scene {
         enemy.setAttackTarget(nearestPlayer);
       }
 
+      // Move enemy units left toward player base when in Moving state
+      // Check if blocked by a player unit that is blocking (tank in Holding state)
+      if (enemy.getState() === UnitState.Moving) {
+        const blocker = this.findBlockingUnit(enemy, playerUnits);
+        if (!blocker) {
+          enemy.x -= enemy.definition.speed * deltaSeconds;
+        }
+      }
+
       enemy.updateAttack(deltaMs);
     }
+  }
+
+  /**
+   * Find a player unit that is blocking the enemy's path.
+   * Returns the blocking unit if one is directly ahead, null otherwise.
+   */
+  private findBlockingUnit(enemy: EnemyUnit, playerUnits: PlayerUnit[]): PlayerUnit | null {
+    const BLOCKING_RANGE = 40; // How close enemy must be to be blocked
+
+    for (const player of playerUnits) {
+      if (!player.active || player.getState() === UnitState.Dying) continue;
+      if (!player.isBlocking()) continue;
+
+      // Blocker must be ahead of enemy (to the left, since enemies move left)
+      if (player.x >= enemy.x) continue;
+
+      const distance = Phaser.Math.Distance.Between(enemy.x, enemy.y, player.x, player.y);
+      if (distance <= BLOCKING_RANGE) {
+        return player;
+      }
+    }
+
+    return null;
   }
 
   /**
