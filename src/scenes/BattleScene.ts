@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from '../config';
+import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
 import { AudioManager } from '../managers/AudioManager';
 import { MUSIC_KEYS, SFX_KEYS } from '../data/audio';
 import { UNIT_DEFINITIONS } from '../data/units';
@@ -499,10 +499,14 @@ export class BattleScene extends Phaser.Scene {
       gameState.recordBattle();
 
       if (victory && rewards) {
+        // Check unit unlock eligibility BEFORE adding gold, so that battle rewards
+        // don't count toward the gold requirement for elite units
+        const canUnlock = rewards.unitUnlock && gameState.canUnlockUnit(rewards.unitUnlock);
+
         gameState.addGold(rewards.totalGold);
         gameState.recordStageCompletion(this.stageId, rewards.stars);
 
-        if (rewards.unitUnlock) {
+        if (canUnlock && rewards.unitUnlock) {
           gameState.unlockUnit(rewards.unitUnlock);
         }
       }
