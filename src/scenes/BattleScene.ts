@@ -9,7 +9,7 @@ import { EnemyUnit } from '../units/EnemyUnit';
 import { PlayerUnit, createPlayerUnit } from '../units/PlayerUnit';
 import { Base } from '../entities/Base';
 import { Unit, UnitState } from '../units/Unit';
-import { getStage } from '../data/stages';
+import { getStage, calculateStars } from '../data/stages';
 import { GameState } from '../managers/GameState';
 
 const INITIAL_GOLD = 50;
@@ -34,6 +34,7 @@ interface BattleSceneData {
 export class BattleScene extends Phaser.Scene {
   private stageId = 1;
   private gold = INITIAL_GOLD;
+  private battleStartTime = 0;
 
   private hud!: HUD;
   private spawnBar!: SpawnBar;
@@ -56,6 +57,7 @@ export class BattleScene extends Phaser.Scene {
 
     // Reset battle state
     this.gold = INITIAL_GOLD;
+    this.battleStartTime = 0;
   }
 
   create(): void {
@@ -132,6 +134,9 @@ export class BattleScene extends Phaser.Scene {
       color: '#666666',
     });
     stageInfo.setOrigin(0, 1);
+
+    // Record battle start time
+    this.battleStartTime = this.time.now;
 
     // Create spawn bar
     this.spawnBar = new SpawnBar({
@@ -409,17 +414,23 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private endBattle(victory: boolean): void {
-    const stars = victory ? this.calculateStars() : 0;
+    const stage = getStage(this.stageId);
+    const elapsedSeconds = (this.time.now - this.battleStartTime) / 1000;
+    const stars = victory
+      ? calculateStars(
+          this.playerBase.getHp(),
+          this.playerBase.getMaxHp(),
+          elapsedSeconds,
+          stage.targetTime
+        )
+      : 0;
     const goldReward = victory ? 100 : 25;
 
-    if (victory) {
-      const stage = getStage(this.stageId);
-      if (stage.unlocksUnit) {
-        const gameState = GameState.getInstance(this);
-        if (gameState) {
-          gameState.unlockUnit(stage.unlocksUnit);
-          gameState.save();
-        }
+    if (victory && stage.unlocksUnit) {
+      const gameState = GameState.getInstance(this);
+      if (gameState) {
+        gameState.unlockUnit(stage.unlocksUnit);
+        gameState.save();
       }
     }
 
@@ -429,13 +440,6 @@ export class BattleScene extends Phaser.Scene {
       stars,
       goldReward,
     });
-  }
-
-  private calculateStars(): number {
-    const hpRatio = this.playerBase.getHpRatio();
-    if (hpRatio >= 0.8) return 3;
-    if (hpRatio >= 0.5) return 2;
-    return 1;
   }
 
   /**
