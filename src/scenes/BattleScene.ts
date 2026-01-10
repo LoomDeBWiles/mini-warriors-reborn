@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config';
 import { AudioManager } from '../managers/AudioManager';
-import { MUSIC_KEYS } from '../data/audio';
+import { MUSIC_KEYS, SFX_KEYS } from '../data/audio';
+import { UNIT_DEFINITIONS } from '../data/units';
 import { HUD } from '../ui/HUD';
 import { SpawnBar } from '../ui/SpawnBar';
 import { WaveManager } from '../systems/WaveManager';
@@ -357,6 +358,26 @@ export class BattleScene extends Phaser.Scene {
     if (this.spendGold(effectiveCost)) {
       this.spawnBar.startCooldown(unitId);
       this.spawnUnit(unitId);
+      this.playSpawnSfx(unitId);
+    }
+  }
+
+  /**
+   * Play the appropriate spawn sound effect based on unit type.
+   */
+  private playSpawnSfx(unitId: string): void {
+    const unit = UNIT_DEFINITIONS[unitId];
+    if (!unit) return;
+
+    const audio = AudioManager.getInstance(this);
+    if (!audio) return;
+
+    if (unit.isTank) {
+      audio.playSfx(SFX_KEYS.spawn_heavy.key);
+    } else if (unit.range > 0) {
+      audio.playSfx(SFX_KEYS.spawn_ranged.key);
+    } else {
+      audio.playSfx(SFX_KEYS.spawn_melee.key);
     }
   }
 
