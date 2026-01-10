@@ -230,7 +230,7 @@ export class BattleScene extends Phaser.Scene {
 
       // Set targets based on state
       const state = unit.getState();
-      if (state === UnitState.Attacking && nearestEnemy) {
+      if ((state === UnitState.Attacking || state === UnitState.Holding) && nearestEnemy) {
         unit.setAttackTarget(nearestEnemy);
       } else if (state === UnitState.Healing && nearestDamagedAlly) {
         unit.setHealTarget(nearestDamagedAlly);
