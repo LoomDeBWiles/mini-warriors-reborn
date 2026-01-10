@@ -98,7 +98,9 @@ export class BattleScene extends Phaser.Scene {
       stage.waves,
       ENEMY_SPAWN_X,
       ENEMY_SPAWN_Y,
-      (enemy) => this.handleEnemySpawn(enemy)
+      (enemy) => this.handleEnemySpawn(enemy),
+      stage.enemyHPMultiplier,
+      stage.enemyDamageMultiplier
     );
     this.waveManager.setOnWaveComplete((waveNumber, delayAfter) => {
       this.handleWaveComplete(waveNumber, delayAfter);

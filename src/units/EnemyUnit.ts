@@ -55,19 +55,29 @@ export class EnemyUnit extends Unit {
  * @param enemyId - ID of the enemy type (e.g., 'goblin')
  * @param x - Initial x position
  * @param y - Initial y position
- * @returns EnemyUnit with stats from the enemy definition
+ * @param hpMultiplier - Multiplier for enemy HP (default 1.0)
+ * @param damageMultiplier - Multiplier for enemy damage (default 1.0)
+ * @returns EnemyUnit with stats from the enemy definition, scaled by multipliers
  * @throws Error if enemyId is not found in ENEMY_DEFINITIONS
  */
 export function createEnemyUnit(
   scene: Phaser.Scene,
   enemyId: string,
   x: number,
-  y: number
+  y: number,
+  hpMultiplier = 1.0,
+  damageMultiplier = 1.0
 ): EnemyUnit {
-  const definition = ENEMY_DEFINITIONS[enemyId];
-  if (!definition) {
+  const baseDefinition = ENEMY_DEFINITIONS[enemyId];
+  if (!baseDefinition) {
     throw new Error(`Unknown enemy ID: ${enemyId}`);
   }
+
+  const definition: EnemyDefinition = {
+    ...baseDefinition,
+    hp: Math.round(baseDefinition.hp * hpMultiplier),
+    damage: Math.round(baseDefinition.damage * damageMultiplier),
+  };
 
   return new EnemyUnit({ scene, x, y, definition });
 }

@@ -28,6 +28,8 @@ export class WaveManager {
   private spawnY: number;
   private onEnemySpawn: (enemy: EnemyUnit) => void;
   private onWaveComplete: OnWaveCompleteCallback | null = null;
+  private hpMultiplier: number;
+  private damageMultiplier: number;
 
   private waveActive: boolean;
   private spawnStates: SpawnState[];
@@ -44,7 +46,9 @@ export class WaveManager {
     waveDefinitions: WaveDefinition[],
     spawnX: number,
     spawnY: number,
-    onEnemySpawn: (enemy: EnemyUnit) => void
+    onEnemySpawn: (enemy: EnemyUnit) => void,
+    hpMultiplier = 1.0,
+    damageMultiplier = 1.0
   ) {
     this.scene = scene;
     this.waveDefinitions = waveDefinitions;
@@ -52,6 +56,8 @@ export class WaveManager {
     this.spawnX = spawnX;
     this.spawnY = spawnY;
     this.onEnemySpawn = onEnemySpawn;
+    this.hpMultiplier = hpMultiplier;
+    this.damageMultiplier = damageMultiplier;
 
     this.waveActive = false;
     this.spawnStates = [];
@@ -165,7 +171,14 @@ export class WaveManager {
       return;
     }
 
-    const enemy = createEnemyUnit(this.scene, enemyId, this.spawnX, this.spawnY);
+    const enemy = createEnemyUnit(
+      this.scene,
+      enemyId,
+      this.spawnX,
+      this.spawnY,
+      this.hpMultiplier,
+      this.damageMultiplier
+    );
     this.waveEnemyCount++;
     this.notifyEnemySpawn(enemyId);
     this.onEnemySpawn(enemy);
