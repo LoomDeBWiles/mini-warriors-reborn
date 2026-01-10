@@ -14,6 +14,11 @@ interface UnitConfig {
   definition: UnitDefinition;
 }
 
+/** Amplitude of flying unit bob in pixels */
+const FLY_BOB_AMPLITUDE = 8;
+/** Speed of flying unit bob (radians per second) */
+const FLY_BOB_SPEED = 3;
+
 /**
  * A unit on the battlefield with a health bar that follows its position.
  */
@@ -22,6 +27,10 @@ export class Unit extends Phaser.GameObjects.Container {
   private healthBar: HealthBar;
   private sprite: Phaser.GameObjects.Arc;
   protected stateMachine: StateMachine;
+  /** Accumulated time for flying bob animation (in seconds) */
+  private flyTime = 0;
+  /** Current y offset from flying bob */
+  private flyOffset = 0;
 
   constructor(config: UnitConfig) {
     super(config.scene, config.x, config.y);
@@ -77,6 +86,33 @@ export class Unit extends Phaser.GameObjects.Container {
    */
   isBlocking(): boolean {
     return this.stateMachine.getState() === UnitState.Holding;
+  }
+
+  /**
+   * Returns true if this unit ignores ground collision.
+   */
+  isFlying(): boolean {
+    return this.definition.isFlying === true;
+  }
+
+  /**
+   * Update flying bob animation. Call each frame with delta time.
+   * Returns the current y offset for visual bobbing.
+   */
+  updateFlyingBob(deltaMs: number): number {
+    if (!this.definition.isFlying) {
+      return 0;
+    }
+    this.flyTime += deltaMs / 1000;
+    this.flyOffset = Math.sin(this.flyTime * FLY_BOB_SPEED) * FLY_BOB_AMPLITUDE;
+    return this.flyOffset;
+  }
+
+  /**
+   * Get the current flying bob offset.
+   */
+  getFlyingOffset(): number {
+    return this.flyOffset;
   }
 
   takeDamage(amount: number): void {

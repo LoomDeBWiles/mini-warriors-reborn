@@ -21,6 +21,8 @@ export interface UnitDefinition {
   speed: number;
   /** Tank units enter holding state and block enemy movement */
   isTank?: boolean;
+  /** Flying units ignore ground collision and bob with a sine wave pattern */
+  isFlying?: boolean;
 }
 
 /**
@@ -115,6 +117,7 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
     damage: 28,
     range: 0,
     speed: 100,
+    isFlying: true,
   },
   paladin: {
     id: 'paladin',
@@ -138,6 +141,7 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
     damage: 50,
     range: 150,
     speed: 90,
+    isFlying: true,
   },
 };
 
