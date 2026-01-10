@@ -13,6 +13,9 @@ interface SpawnState {
   nextSpawnTime: number;
 }
 
+/** Callback when wave is complete (all enemies spawned, then all killed) */
+type OnWaveCompleteCallback = (waveNumber: number, delayAfter: number) => void;
+
 /**
  * Manages wave spawning in battle. Triggers wave start fanfare when waves begin
  * and boss spawn announcements for boss enemies.
@@ -24,10 +27,17 @@ export class WaveManager {
   private spawnX: number;
   private spawnY: number;
   private onEnemySpawn: (enemy: EnemyUnit) => void;
+  private onWaveComplete: OnWaveCompleteCallback | null = null;
 
   private waveActive: boolean;
   private spawnStates: SpawnState[];
   private waveStartTime: number;
+  /** Total enemies spawned in current wave */
+  private waveEnemyCount: number;
+  /** Enemies killed in current wave */
+  private waveKillCount: number;
+  /** True when all enemies spawned but waiting for kills */
+  private waitingForKills: boolean;
 
   constructor(
     scene: Phaser.Scene,
@@ -46,6 +56,16 @@ export class WaveManager {
     this.waveActive = false;
     this.spawnStates = [];
     this.waveStartTime = 0;
+    this.waveEnemyCount = 0;
+    this.waveKillCount = 0;
+    this.waitingForKills = false;
+  }
+
+  /**
+   * Set callback for wave completion.
+   */
+  setOnWaveComplete(callback: OnWaveCompleteCallback): void {
+    this.onWaveComplete = callback;
   }
 
   /**
@@ -74,6 +94,9 @@ export class WaveManager {
       nextSpawnTime: this.waveStartTime + spawn.spawnDelay,
     }));
     this.waveActive = true;
+    this.waveEnemyCount = 0;
+    this.waveKillCount = 0;
+    this.waitingForKills = false;
 
     return this.currentWave;
   }
@@ -102,6 +125,28 @@ export class WaveManager {
 
     if (allComplete) {
       this.waveActive = false;
+      this.waitingForKills = true;
+    }
+  }
+
+  /**
+   * Notify that an enemy from the current wave was killed.
+   * When all enemies are killed, triggers wave completion.
+   */
+  notifyEnemyKilled(): void {
+    this.waveKillCount++;
+
+    if (this.waitingForKills && this.waveKillCount >= this.waveEnemyCount) {
+      this.waitingForKills = false;
+
+      // Play wave complete sound
+      const audioManager = AudioManager.getInstance(this.scene);
+      audioManager?.playSfx('wave_complete');
+
+      // Notify callback with delay
+      const waveDef = this.waveDefinitions[this.currentWave - 1];
+      const delayAfter = waveDef?.delayAfter ?? 2000;
+      this.onWaveComplete?.(this.currentWave, delayAfter);
     }
   }
 
@@ -112,6 +157,7 @@ export class WaveManager {
     }
 
     const enemy = createEnemyUnit(this.scene, enemyId, this.spawnX, this.spawnY);
+    this.waveEnemyCount++;
     this.notifyEnemySpawn(enemyId);
     this.onEnemySpawn(enemy);
   }

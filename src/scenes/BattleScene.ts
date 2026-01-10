@@ -95,6 +95,9 @@ export class BattleScene extends Phaser.Scene {
       ENEMY_SPAWN_Y,
       (enemy) => this.handleEnemySpawn(enemy)
     );
+    this.waveManager.setOnWaveComplete((waveNumber, delayAfter) => {
+      this.handleWaveComplete(waveNumber, delayAfter);
+    });
     this.waveManager.startNextWave();
 
     // Create HUD
@@ -127,6 +130,9 @@ export class BattleScene extends Phaser.Scene {
 
     // Listen for gold earned from enemy kills
     this.events.on('gold-earned', (data: { amount: number }) => this.addGold(data.amount));
+
+    // Listen for enemy deaths to track wave completion
+    this.events.on('enemy-killed', () => this.waveManager.notifyEnemyKilled());
 
     // Stage info (temporary, for debugging)
     const stageInfo = this.add.text(20, GAME_HEIGHT - 100, `Stage ${this.stageId}`, {
@@ -410,6 +416,18 @@ export class BattleScene extends Phaser.Scene {
     if (wave !== null) {
       this.hud.updateWave(wave, this.waveManager.getTotalWaves());
       this.hud.showWaveAnnouncement(wave);
+    }
+  }
+
+  private handleWaveComplete(waveNumber: number, delayAfter: number): void {
+    console.log(`Wave ${waveNumber} complete, next wave in ${delayAfter}ms`);
+
+    // If this was the final wave and all enemies are dead, victory is handled by base destruction
+    // So we only advance to next wave if there are more waves
+    if (waveNumber < this.waveManager.getTotalWaves()) {
+      this.time.delayedCall(delayAfter, () => {
+        this.advanceWave();
+      });
     }
   }
 
