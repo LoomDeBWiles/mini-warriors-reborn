@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { STAGE_DEFINITIONS } from '../data/stages';
+import { SaveManager } from './SaveManager';
 
-const SAVE_STORAGE_KEY = 'miniWarriorsSave';
 export const CURRENT_VERSION = 1;
 
 export interface UnitUpgrades {
@@ -44,7 +44,7 @@ export interface GameStateData {
   stats: PlayerStats;
 }
 
-function createDefaultState(): GameStateData {
+export function createDefaultState(): GameStateData {
   return {
     version: CURRENT_VERSION,
     currentStage: 1,
@@ -72,40 +72,20 @@ function createDefaultState(): GameStateData {
   };
 }
 
-/**
- * Load GameState from localStorage.
- * Returns saved state if valid, or a fresh default state if parse fails.
- */
-export function loadGameState(): GameStateData {
-  try {
-    const stored = localStorage.getItem(SAVE_STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored) as Partial<GameStateData>;
-      return mergeWithDefaults(parsed);
-    }
-  } catch {
-    // Parse failed, return default
-  }
-  return createDefaultState();
-}
 
 /**
  * Save GameState to localStorage.
- * Logs warning if storage is full.
+ * Delegates to SaveManager for consistency.
  */
 export function saveGameState(state: GameStateData): void {
-  try {
-    localStorage.setItem(SAVE_STORAGE_KEY, JSON.stringify(state));
-  } catch (error) {
-    console.warn('Failed to save game state:', error);
-  }
+  SaveManager.save(state);
 }
 
 /**
  * Merge saved state with defaults to handle schema evolution.
  * Any missing fields get default values.
  */
-function mergeWithDefaults(saved: Partial<GameStateData>): GameStateData {
+export function mergeWithDefaults(saved: Partial<GameStateData>): GameStateData {
   const defaults = createDefaultState();
   return {
     version: saved.version ?? defaults.version,
@@ -159,7 +139,7 @@ export class GameState {
       return existing;
     }
 
-    const data = loadGameState();
+    const data = SaveManager.load();
     const state = new GameState(data);
     scene.registry.set(GameState.REGISTRY_KEY, state);
     return state;

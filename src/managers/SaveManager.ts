@@ -1,5 +1,5 @@
 import type { GameStateData } from './GameState';
-import { CURRENT_VERSION } from './GameState';
+import { CURRENT_VERSION, createDefaultState, mergeWithDefaults } from './GameState';
 
 const SAVE_STORAGE_KEY = 'miniWarriorsSave';
 
@@ -58,22 +58,23 @@ export class SaveManager {
 
   /**
    * Load game state from localStorage.
-   * Returns null if no save exists or parse fails.
-   * Applies migrations if save version is older than current.
+   * Returns default state if no save exists or parse fails.
+   * Applies migrations if save version is older than current,
+   * then merges with defaults to fill any missing fields.
    */
-  static load(): GameStateData | null {
+  static load(): GameStateData {
     try {
       const stored = localStorage.getItem(SAVE_STORAGE_KEY);
       if (stored) {
-        const data = JSON.parse(stored) as GameStateData;
+        let data = JSON.parse(stored) as GameStateData;
         if (data.version < CURRENT_VERSION) {
-          return migrate(data);
+          data = migrate(data);
         }
-        return data;
+        return mergeWithDefaults(data);
       }
     } catch {
       // Parse failed
     }
-    return null;
+    return createDefaultState();
   }
 }
