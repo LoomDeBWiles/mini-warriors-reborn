@@ -27,7 +27,7 @@ export class MenuScene extends Phaser.Scene {
 
     // Play button
     this.createMenuButton('Play', GAME_WIDTH / 2, buttonY, () => {
-      this.scene.start('loadout', { stageId: 1 });
+      this.scene.start('levelSelect');
     });
 
     // Options button

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene';
 import { PreloadScene } from './scenes/PreloadScene';
 import { MenuScene } from './scenes/MenuScene';
+import { LevelSelectScene } from './scenes/LevelSelectScene';
 import { LoadoutScene } from './scenes/LoadoutScene';
 import { BattleScene } from './scenes/BattleScene';
 import { PauseOverlay } from './scenes/overlays/PauseOverlay';
@@ -26,5 +27,5 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
       debug: false,
     },
   },
-  scene: [BootScene, PreloadScene, MenuScene, LoadoutScene, BattleScene, PauseOverlay, ResultsOverlay],
+  scene: [BootScene, PreloadScene, MenuScene, LevelSelectScene, LoadoutScene, BattleScene, PauseOverlay, ResultsOverlay],
 };
