@@ -185,6 +185,14 @@ export class GameState {
   }
 
   /**
+   * Check if a unit is unlocked.
+   * Returns false for unknown unit IDs.
+   */
+  isUnitUnlocked(unitId: string): boolean {
+    return this.data.unlockedUnits.includes(unitId);
+  }
+
+  /**
    * Unlock a unit if not already unlocked.
    * Duplicates are silently ignored.
    */
