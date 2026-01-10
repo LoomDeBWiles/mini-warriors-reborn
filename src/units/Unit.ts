@@ -62,13 +62,15 @@ export class Unit extends Phaser.GameObjects.Container {
 
   /**
    * Update the unit's state machine with current battlefield context.
-   * Call every frame with distance to nearest enemy.
+   * Call every frame with distance to nearest enemy and damaged ally.
    */
-  updateStateMachine(distanceToEnemy: number | null): void {
+  updateStateMachine(distanceToEnemy: number | null, distanceToDamagedAlly: number | null = null): void {
     const context: TransitionContext = {
       distanceToEnemy,
       attackRange: this.definition.range,
       isTank: this.definition.isTank,
+      isHealer: this.definition.isHealer,
+      distanceToDamagedAlly,
     };
     this.stateMachine.update(context);
   }
@@ -128,6 +130,32 @@ export class Unit extends Phaser.GameObjects.Container {
 
   getHp(): number {
     return this.healthBar.getHp();
+  }
+
+  getMaxHp(): number {
+    return this.definition.hp;
+  }
+
+  /**
+   * Heal this unit by the given amount. HP cannot exceed max HP.
+   */
+  heal(amount: number): void {
+    const newHp = Math.min(this.healthBar.getHp() + amount, this.definition.hp);
+    this.healthBar.setHp(newHp);
+  }
+
+  /**
+   * Returns true if this unit is a healer.
+   */
+  isHealer(): boolean {
+    return this.definition.isHealer === true;
+  }
+
+  /**
+   * Returns the heal amount for healer units.
+   */
+  getHealAmount(): number {
+    return this.definition.healAmount ?? 0;
   }
 
   private getUnitColor(): number {

@@ -23,6 +23,10 @@ export interface UnitDefinition {
   isTank?: boolean;
   /** Flying units ignore ground collision and bob with a sine wave pattern */
   isFlying?: boolean;
+  /** Healer units heal allies instead of attacking enemies */
+  isHealer?: boolean;
+  /** Heal amount per tick for healer units */
+  healAmount?: number;
 }
 
 /**
@@ -84,6 +88,8 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
     damage: 0,
     range: 150,
     speed: 65,
+    isHealer: true,
+    healAmount: 8,
   },
   assassin: {
     id: 'assassin',

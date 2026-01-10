@@ -5,6 +5,7 @@ export enum UnitState {
   Moving = 'moving',
   Attacking = 'attacking',
   Holding = 'holding',
+  Healing = 'healing',
 }
 
 /**
@@ -17,6 +18,10 @@ export interface TransitionContext {
   attackRange: number;
   /** Tank units enter holding state instead of attacking */
   isTank?: boolean;
+  /** Healer units heal allies instead of attacking */
+  isHealer?: boolean;
+  /** Distance to nearest damaged ally in pixels, or null if none */
+  distanceToDamagedAlly: number | null;
 }
 
 /** Melee range threshold - units attack when closer than this distance */
@@ -56,7 +61,12 @@ export class StateMachine {
   }
 
   private evaluateTransition(context: TransitionContext): UnitState {
-    const { distanceToEnemy, attackRange, isTank } = context;
+    const { distanceToEnemy, attackRange, isTank, isHealer, distanceToDamagedAlly } = context;
+
+    // Healers prioritize healing damaged allies over attacking
+    if (isHealer && distanceToDamagedAlly !== null && distanceToDamagedAlly <= attackRange) {
+      return UnitState.Healing;
+    }
 
     if (distanceToEnemy === null) {
       return UnitState.Moving;
@@ -67,7 +77,10 @@ export class StateMachine {
 
     if (distanceToEnemy <= effectiveRange) {
       // Tank units enter holding state to block enemies
-      return isTank ? UnitState.Holding : UnitState.Attacking;
+      // Healers don't attack enemies (damage = 0), so continue moving
+      if (isTank) return UnitState.Holding;
+      if (isHealer) return UnitState.Moving;
+      return UnitState.Attacking;
     }
 
     return UnitState.Moving;
