@@ -162,7 +162,7 @@ export class Unit extends Phaser.GameObjects.Container {
 
   /**
    * Update attack logic. Call each frame with delta time.
-   * When in Attacking state and target is valid, attacks at intervals.
+   * When in Attacking or Holding state and target is valid, attacks at intervals.
    * Returns true if an attack was triggered this frame.
    * Does nothing when unit is inactive (paused).
    */
@@ -174,8 +174,9 @@ export class Unit extends Phaser.GameObjects.Container {
       this.attackCooldown -= deltaMs;
     }
 
-    // Only attack when in attacking state
-    if (this.stateMachine.getState() !== UnitState.Attacking) {
+    // Attack when in Attacking state, or Holding state (tanks attack while blocking)
+    const state = this.stateMachine.getState();
+    if (state !== UnitState.Attacking && state !== UnitState.Holding) {
       return false;
     }
 
