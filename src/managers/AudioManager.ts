@@ -270,6 +270,12 @@ export class AudioManager {
       return;
     }
 
+    // Verify audio key exists in cache before attempting playback
+    if (!this.game.cache.audio.exists(key)) {
+      console.warn(`[AudioManager] switchMusic: audio key "${key}" not found in cache, skipping`);
+      return;
+    }
+
     // Create new music track
     const newMusic = this.game.sound.add(key, {
       volume: 0, // Start at 0 for fade in
