@@ -70,10 +70,22 @@ export class Unit extends Phaser.GameObjects.Container {
   }
 
   /**
+   * Set whether this unit is active. When inactive, state machine stops updating.
+   * Use for pausing gameplay - tweens/animations should be paused separately via scene.tweens.
+   */
+  setActive(value: boolean): this {
+    this.active = value;
+    return this;
+  }
+
+  /**
    * Update the unit's state machine with current battlefield context.
    * Call every frame with distance to nearest enemy and damaged ally.
+   * Does nothing when unit is inactive (paused).
    */
   updateStateMachine(distanceToEnemy: number | null, distanceToDamagedAlly: number | null = null): void {
+    if (!this.active) return;
+
     const context: TransitionContext = {
       distanceToEnemy,
       attackRange: this.definition.range,
@@ -109,8 +121,10 @@ export class Unit extends Phaser.GameObjects.Container {
   /**
    * Update flying bob animation. Call each frame with delta time.
    * Returns the current y offset for visual bobbing.
+   * Does nothing when unit is inactive (paused).
    */
   updateFlyingBob(deltaMs: number): number {
+    if (!this.active) return this.flyOffset;
     if (!this.definition.isFlying) {
       return 0;
     }
@@ -144,8 +158,11 @@ export class Unit extends Phaser.GameObjects.Container {
    * Update attack logic. Call each frame with delta time.
    * When in Attacking state and target is valid, attacks at intervals.
    * Returns true if an attack was triggered this frame.
+   * Does nothing when unit is inactive (paused).
    */
   updateAttack(deltaMs: number): boolean {
+    if (!this.active) return false;
+
     // Reduce cooldown
     if (this.attackCooldown > 0) {
       this.attackCooldown -= deltaMs;
