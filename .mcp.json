@@ -1,0 +1,16 @@
+{
+  "pixellab": {
+    "type": "http",
+    "url": "https://api.pixellab.ai/mcp",
+    "headers": {
+      "Authorization": "Bearer ${PIXELLAB_API_KEY}"
+    }
+  },
+  "suno-mcp": {
+    "command": "/home/ben/tools/suno-mcp/.venv/bin/python",
+    "args": ["-m", "suno_mcp.server"],
+    "env": {
+      "PYTHONPATH": "/home/ben/tools/suno-mcp/src"
+    }
+  }
+}
