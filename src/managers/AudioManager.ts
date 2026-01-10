@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { SFX_KEYS, type SfxKey } from '../data/audio';
 
 /**
  * Central audio controller for music and sound effects.
@@ -77,19 +78,49 @@ export class AudioManager {
 
   /**
    * Play a sound effect. If audio is locked, queues it for playback after unlock.
+   * For sounds with variations, randomly selects one. Applies random pitch variation.
    */
   playSfx(key: string, config?: Phaser.Types.Sound.SoundConfig): void {
+    const resolvedKey = this.resolveSfxKey(key);
+    const detune = this.randomDetune();
+
     const soundConfig: Phaser.Types.Sound.SoundConfig = {
       volume: this.sfxVolume,
+      detune,
       ...config,
     };
 
     if (!this.unlocked) {
-      this.pendingSounds.push({ key, config: soundConfig });
+      this.pendingSounds.push({ key: resolvedKey, config: soundConfig });
       return;
     }
 
-    this.scene.sound.play(key, soundConfig);
+    this.scene.sound.play(resolvedKey, soundConfig);
+  }
+
+  /**
+   * Resolve an SFX key to a playable audio key.
+   * If the sound has variations, randomly selects one.
+   */
+  private resolveSfxKey(key: string): string {
+    if (!(key in SFX_KEYS)) {
+      return key;
+    }
+
+    const sfxDef = SFX_KEYS[key as SfxKey];
+    if ('variations' in sfxDef && sfxDef.variations.length > 0) {
+      const index = Math.floor(Math.random() * sfxDef.variations.length);
+      return sfxDef.variations[index];
+    }
+
+    return sfxDef.key;
+  }
+
+  /**
+   * Generate a random detune value between -50 and +50 cents for pitch variation.
+   */
+  private randomDetune(): number {
+    return Math.floor(Math.random() * 101) - 50;
   }
 
   /**
