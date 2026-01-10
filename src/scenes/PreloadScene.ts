@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config';
 import { AudioManager } from '../managers/AudioManager';
 
+const SETTINGS_STORAGE_KEY = 'miniWarriorsSettings';
+
 export class PreloadScene extends Phaser.Scene {
   constructor() {
     super({ key: 'preload' });
@@ -36,12 +38,28 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   create(): void {
-    // Initialize AudioManager with audio unlock handling
-    AudioManager.init(this);
+    // Load saved settings from localStorage
+    const savedSettings = this.loadSettings();
+    const musicVolume = savedSettings.musicVolume ?? 1.0;
+
+    // Initialize AudioManager with saved volume
+    AudioManager.init(this, musicVolume);
 
     // Initialize GameState from localStorage or create fresh
     // GameState initialization will be added here
 
     this.scene.start('menu');
+  }
+
+  private loadSettings(): { musicVolume?: number } {
+    try {
+      const stored = localStorage.getItem(SETTINGS_STORAGE_KEY);
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch {
+      // Ignore parse errors, return default
+    }
+    return {};
   }
 }
