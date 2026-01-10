@@ -19,6 +19,8 @@ export class PauseOverlay extends Phaser.Scene {
   private settingsPanel: Phaser.GameObjects.Container | null = null;
   /** Main menu buttons container */
   private menuButtons: Phaser.GameObjects.Container | null = null;
+  /** Pause title text, hidden when Settings panel is open */
+  private pauseTitle: Phaser.GameObjects.Text | null = null;
 
   constructor() {
     super({ key: 'pause' });
@@ -41,12 +43,12 @@ export class PauseOverlay extends Phaser.Scene {
     overlay.setInteractive(); // Block clicks from passing through
 
     // Pause title
-    const title = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 3, 'PAUSED', {
+    this.pauseTitle = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 3, 'PAUSED', {
       fontSize: '64px',
       color: '#ffffff',
       fontStyle: 'bold',
     });
-    title.setOrigin(0.5);
+    this.pauseTitle.setOrigin(0.5);
 
     // Create menu buttons in a container
     this.menuButtons = this.add.container(0, 0);
@@ -278,12 +280,14 @@ export class PauseOverlay extends Phaser.Scene {
   }
 
   private openSettings(): void {
+    this.pauseTitle?.setVisible(false);
     this.menuButtons?.setVisible(false);
     this.settingsPanel?.setVisible(true);
   }
 
   private closeSettings(): void {
     this.settingsPanel?.setVisible(false);
+    this.pauseTitle?.setVisible(true);
     this.menuButtons?.setVisible(true);
   }
 
