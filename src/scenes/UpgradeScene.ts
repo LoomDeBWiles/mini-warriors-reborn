@@ -22,6 +22,7 @@ interface CastleUpgrades {
 interface GameState {
   highestStage: number;
   gold: number;
+  stageStars: Record<number, number>;
   unitUpgrades: Record<string, UnitUpgrades>;
   castleUpgrades: CastleUpgrades;
 }
@@ -107,6 +108,7 @@ export class UpgradeScene extends Phaser.Scene {
     return stored ?? {
       highestStage: 1,
       gold: 500,
+      stageStars: {},
       unitUpgrades: {},
       castleUpgrades: {},
     };
