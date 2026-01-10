@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { STAGE_DEFINITIONS } from '../data/stages';
 
 const SAVE_STORAGE_KEY = 'miniWarriorsSave';
-const CURRENT_VERSION = 1;
+export const CURRENT_VERSION = 1;
 
 export interface UnitUpgrades {
   offense: number;
