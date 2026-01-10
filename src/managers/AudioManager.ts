@@ -296,12 +296,18 @@ export class AudioManager {
   }
 
   /**
-   * Stop all music currently playing.
+   * Stop all music currently playing (both background music and jingles).
+   * Does not affect sound effects.
    */
   stopMusic(): void {
-    this.game.sound.stopAll();
-    this.currentMusic = null;
-    this.currentJingle = null;
+    if (this.currentMusic) {
+      this.currentMusic.stop();
+      this.currentMusic = null;
+    }
+    if (this.currentJingle) {
+      this.currentJingle.stop();
+      this.currentJingle = null;
+    }
   }
 
   /**
