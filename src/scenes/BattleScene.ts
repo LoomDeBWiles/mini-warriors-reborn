@@ -149,7 +149,21 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private endBattle(victory: boolean): void {
-    console.log(`Battle ended: ${victory ? 'Victory' : 'Defeat'}`);
-    // ResultsOverlay will be implemented in a future bead
+    const stars = victory ? this.calculateStars() : 0;
+    const goldReward = victory ? 100 : 25;
+
+    this.scene.pause();
+    this.scene.launch('results', {
+      victory,
+      stars,
+      goldReward,
+    });
+  }
+
+  private calculateStars(): number {
+    const hpRatio = this.playerBaseHp / PLAYER_BASE_HP;
+    if (hpRatio >= 0.8) return 3;
+    if (hpRatio >= 0.5) return 2;
+    return 1;
   }
 }

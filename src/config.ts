@@ -5,6 +5,7 @@ import { MenuScene } from './scenes/MenuScene';
 import { LoadoutScene } from './scenes/LoadoutScene';
 import { BattleScene } from './scenes/BattleScene';
 import { PauseOverlay } from './scenes/overlays/PauseOverlay';
+import { ResultsOverlay } from './scenes/overlays/ResultsOverlay';
 
 export const GAME_WIDTH = 1280;
 export const GAME_HEIGHT = 720;
@@ -25,5 +26,5 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
       debug: false,
     },
   },
-  scene: [BootScene, PreloadScene, MenuScene, LoadoutScene, BattleScene, PauseOverlay],
+  scene: [BootScene, PreloadScene, MenuScene, LoadoutScene, BattleScene, PauseOverlay, ResultsOverlay],
 };
