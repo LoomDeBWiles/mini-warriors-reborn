@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH } from '../config';
+import { GAME_WIDTH, GAME_HEIGHT } from '../config';
 
 const HUD_HEIGHT = 60;
+const WAVE_BANNER_SLIDE_DURATION = 400;
+const WAVE_BANNER_HOLD_DURATION = 1200;
 const HUD_PADDING = 20;
 const HP_BAR_WIDTH = 200;
 const HP_BAR_HEIGHT = 20;
@@ -181,5 +183,48 @@ export class HUD extends Phaser.GameObjects.Container {
 
     const percent = Math.round(ratio * 100);
     text.setText(`${percent}%`);
+  }
+
+  /**
+   * Display a wave announcement banner that slides in from left,
+   * holds, then slides out to the right.
+   */
+  showWaveAnnouncement(waveNumber: number): void {
+    const centerY = GAME_HEIGHT / 2;
+    const startX = -300;
+    const centerX = GAME_WIDTH / 2;
+    const endX = GAME_WIDTH + 300;
+
+    const banner = this.scene.add.text(startX, centerY, `Wave ${waveNumber}`, {
+      fontSize: '64px',
+      color: '#ffffff',
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 4,
+    });
+    banner.setOrigin(0.5);
+    banner.setDepth(1001);
+
+    // Slide in
+    this.scene.tweens.add({
+      targets: banner,
+      x: centerX,
+      duration: WAVE_BANNER_SLIDE_DURATION,
+      ease: 'Quad.easeOut',
+      onComplete: () => {
+        // Hold, then slide out
+        this.scene.time.delayedCall(WAVE_BANNER_HOLD_DURATION, () => {
+          this.scene.tweens.add({
+            targets: banner,
+            x: endX,
+            duration: WAVE_BANNER_SLIDE_DURATION,
+            ease: 'Quad.easeIn',
+            onComplete: () => {
+              banner.destroy();
+            },
+          });
+        });
+      },
+    });
   }
 }
