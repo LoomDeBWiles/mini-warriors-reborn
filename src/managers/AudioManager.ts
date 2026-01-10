@@ -1,5 +1,8 @@
 import Phaser from 'phaser';
-import { SFX_KEYS, type SfxKey } from '../data/audio';
+import { MUSIC_KEYS, SFX_KEYS, type SfxKey } from '../data/audio';
+
+/** Music keys that should play once without looping (jingles) */
+const JINGLE_KEYS: Set<string> = new Set([MUSIC_KEYS.victory, MUSIC_KEYS.defeat]);
 
 /** Default max concurrent instances for pooled sounds */
 const DEFAULT_MAX_INSTANCES = 8;
@@ -197,11 +200,14 @@ export class AudioManager {
 
   /**
    * Play background music. If audio is locked, queues it for playback after unlock.
+   * For jingles (victory/defeat), stops current music and plays once without looping.
    */
   playMusic(key: string, config?: Phaser.Types.Sound.SoundConfig): void {
+    const isJingle = JINGLE_KEYS.has(key);
+
     const soundConfig: Phaser.Types.Sound.SoundConfig = {
       volume: this.musicVolume,
-      loop: true,
+      loop: !isJingle,
       ...config,
     };
 
@@ -209,6 +215,9 @@ export class AudioManager {
       this.pendingSounds.push({ key, config: soundConfig });
       return;
     }
+
+    // Stop current music before playing new track
+    this.stopMusic();
 
     this.scene.sound.play(key, soundConfig);
   }
