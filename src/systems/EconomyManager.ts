@@ -67,14 +67,18 @@ export class EconomyManager {
   private scene: Phaser.Scene;
   private gold: number;
   private getModifiers: (unitId: string) => StatModifiers;
+  private goldMineLevel: number;
+  private accumulatedPassiveGold: number = 0;
 
   constructor(
     scene: Phaser.Scene,
     initialGold: number = 0,
     getModifiers?: (unitId: string) => StatModifiers,
+    goldMineLevel: number = 0,
   ) {
     this.scene = scene;
     this.gold = initialGold;
+    this.goldMineLevel = goldMineLevel;
     this.getModifiers =
       getModifiers ??
       (() => ({
@@ -120,5 +124,25 @@ export class EconomyManager {
     const adjustedCost = Math.floor(unit.spawnCost * modifiers.costMultiplier);
 
     return this.gold >= adjustedCost;
+  }
+
+  /**
+   * Update passive gold income based on Gold Mine level.
+   * Adds 0.5 gold per level per second.
+   * Gold is accumulated fractionally and added as whole units.
+   * @param deltaSeconds - Time elapsed since last update in seconds
+   */
+  updatePassiveIncome(deltaSeconds: number): void {
+    if (this.goldMineLevel <= 0) return;
+
+    const incomePerSecond = 0.5 * this.goldMineLevel;
+    this.accumulatedPassiveGold += incomePerSecond * deltaSeconds;
+
+    // Add whole gold units when accumulated
+    const wholeGold = Math.floor(this.accumulatedPassiveGold);
+    if (wholeGold > 0) {
+      this.accumulatedPassiveGold -= wholeGold;
+      this.addGold(wholeGold);
+    }
   }
 }
