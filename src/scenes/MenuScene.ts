@@ -21,26 +21,23 @@ export class MenuScene extends Phaser.Scene {
     });
     title.setOrigin(0.5);
 
-    // Placeholder start button
-    const startButton = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'Start Game', {
-      fontSize: '32px',
-      color: '#4a90d9',
-      backgroundColor: '#222222',
-      padding: { x: 20, y: 10 },
-    });
-    startButton.setOrigin(0.5);
-    startButton.setInteractive({ useHandCursor: true });
+    // Menu buttons layout
+    const buttonY = GAME_HEIGHT / 2;
+    const buttonSpacing = 60;
 
-    startButton.on('pointerover', () => {
-      startButton.setColor('#6ab0f9');
-    });
-
-    startButton.on('pointerout', () => {
-      startButton.setColor('#4a90d9');
-    });
-
-    startButton.on('pointerdown', () => {
+    // Play button
+    this.createMenuButton('Play', GAME_WIDTH / 2, buttonY, () => {
       this.scene.start('loadout', { stageId: 1 });
+    });
+
+    // Options button
+    this.createMenuButton('Options', GAME_WIDTH / 2, buttonY + buttonSpacing, () => {
+      // Options scene not yet implemented - button is present but non-functional
+    });
+
+    // Stats button
+    this.createMenuButton('Stats', GAME_WIDTH / 2, buttonY + buttonSpacing * 2, () => {
+      // Stats scene not yet implemented - button is present but non-functional
     });
 
     // Version text
@@ -49,5 +46,28 @@ export class MenuScene extends Phaser.Scene {
       color: '#666666',
     });
     versionText.setOrigin(1, 1);
+  }
+
+  private createMenuButton(label: string, x: number, y: number, onClick: () => void): Phaser.GameObjects.Text {
+    const button = this.add.text(x, y, label, {
+      fontSize: '32px',
+      color: '#4a90d9',
+      backgroundColor: '#222222',
+      padding: { x: 20, y: 10 },
+    });
+    button.setOrigin(0.5);
+    button.setInteractive({ useHandCursor: true });
+
+    button.on('pointerover', () => {
+      button.setColor('#6ab0f9');
+    });
+
+    button.on('pointerout', () => {
+      button.setColor('#4a90d9');
+    });
+
+    button.on('pointerdown', onClick);
+
+    return button;
   }
 }
