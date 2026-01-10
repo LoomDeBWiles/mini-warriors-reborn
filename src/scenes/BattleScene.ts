@@ -475,7 +475,7 @@ export class BattleScene extends Phaser.Scene {
       : null;
 
     const stars = rewards?.stars ?? 0;
-    const goldReward = rewards?.totalGold ?? 25;
+    const goldReward = rewards?.totalGold ?? 0;
 
     // Update persistent game state
     const gameState = GameState.getInstance(this);
