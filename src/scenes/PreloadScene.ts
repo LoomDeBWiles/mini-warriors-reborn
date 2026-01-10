@@ -5,6 +5,108 @@ import { GameState } from '../managers/GameState';
 
 const SETTINGS_STORAGE_KEY = 'miniWarriorsSettings';
 
+// Player unit sprite IDs
+const PLAYER_UNITS = [
+  'swordsman',
+  'archer',
+  'knight',
+  'mage',
+  'healer',
+  'assassin',
+  'catapult',
+  'griffin',
+  'paladin',
+  'dragon',
+] as const;
+
+// Enemy sprite IDs
+const ENEMIES = [
+  'goblin',
+  'warrior',
+  'slinger',
+  'brute',
+  'speedy',
+  'rider',
+  'archer_enemy',
+  'wizard',
+  'giant',
+  'harpy',
+  'dinosaur',
+  'dragon_rider',
+] as const;
+
+// Background IDs
+const BACKGROUNDS = [
+  'battle_grasslands',
+  'battle_forest',
+  'battle_mountains',
+  'battle_volcano',
+  'menu',
+  'level_select',
+  'loadout',
+  'upgrade',
+] as const;
+
+// UI texture IDs
+const UI_TEXTURES = [
+  'button_normal',
+  'button_pressed',
+  'button_hover',
+  'button_disabled',
+  'panel',
+  'icon_gold',
+  'icon_gem',
+  'health_bar',
+] as const;
+
+// Music track IDs (filename without extension -> Phaser key)
+const MUSIC_TRACKS = [
+  { file: 'menu', key: 'music_menu' },
+  { file: 'battle_easy', key: 'music_battle_easy' },
+  { file: 'battle_hard', key: 'music_battle_hard' },
+  { file: 'boss', key: 'music_boss' },
+  { file: 'upgrade', key: 'music_upgrade' },
+  { file: 'victory', key: 'sfx_victory' },
+  { file: 'defeat', key: 'sfx_defeat' },
+] as const;
+
+// SFX file IDs (all use sfx_ prefix)
+const SFX_FILES = [
+  'button_click',
+  'button_hover',
+  'gold_earned',
+  'purchase_success',
+  'purchase_fail',
+  'star_earned',
+  'sword_hit_1',
+  'sword_hit_2',
+  'sword_hit_3',
+  'sword_swing',
+  'arrow_fire',
+  'arrow_hit',
+  'magic_cast',
+  'magic_hit',
+  'fireball_launch',
+  'fireball_explode',
+  'light_hit',
+  'heavy_hit',
+  'critical_hit',
+  'shield_block',
+  'spawn_melee',
+  'spawn_ranged',
+  'spawn_heavy',
+  'death_human',
+  'death_monster',
+  'death_boss',
+  'wave_start',
+  'wave_complete',
+  'boss_spawn',
+  'level_up',
+  'heal_cast',
+  'meteor_strike',
+  'time_warp',
+] as const;
+
 export class PreloadScene extends Phaser.Scene {
   constructor() {
     super({ key: 'preload' });
@@ -35,7 +137,50 @@ export class PreloadScene extends Phaser.Scene {
       loadingText.destroy();
     });
 
-    // Assets will be loaded here in future implementations
+    this.loadSprites();
+    this.loadBackgrounds();
+    this.loadUI();
+    this.loadAudio();
+  }
+
+  private loadSprites(): void {
+    // Player unit sprites
+    for (const unit of PLAYER_UNITS) {
+      this.load.image(`unit_${unit}`, `assets/sprites/units/${unit}.png`);
+    }
+
+    // Enemy sprites
+    for (const enemy of ENEMIES) {
+      this.load.image(`enemy_${enemy}`, `assets/sprites/enemies/${enemy}.png`);
+    }
+  }
+
+  private loadBackgrounds(): void {
+    for (const bg of BACKGROUNDS) {
+      this.load.image(`bg_${bg}`, `assets/backgrounds/${bg}.png`);
+    }
+  }
+
+  private loadUI(): void {
+    for (const ui of UI_TEXTURES) {
+      this.load.image(`ui_${ui}`, `assets/ui/${ui}.png`);
+    }
+  }
+
+  private loadAudio(): void {
+    // Music tracks (detect extension from file system)
+    for (const track of MUSIC_TRACKS) {
+      // Try mp3 first, then wav as fallback
+      this.load.audio(track.key, [
+        `assets/audio/music/${track.file}.mp3`,
+        `assets/audio/music/${track.file}.wav`,
+      ]);
+    }
+
+    // Sound effects
+    for (const sfx of SFX_FILES) {
+      this.load.audio(`sfx_${sfx}`, `assets/audio/sfx/sfx_${sfx}.wav`);
+    }
   }
 
   create(): void {
