@@ -124,3 +124,35 @@ export function getCastleUpgradeCost(upgradeId: string, level: number): number {
   if (!upgrade || level < 1 || level > upgrade.maxLevel) return 0;
   return upgrade.costs[level - 1];
 }
+
+/** Damage multipliers by offense tier (index 0 = no upgrade) */
+const OFFENSE_MULTIPLIERS = [1.0, 1.15, 1.25, 1.4];
+
+/** HP multipliers by defense tier (index 0 = no upgrade) */
+const DEFENSE_MULTIPLIERS = [1.0, 1.2, 1.35, 1.5];
+
+/** Spawn cost multipliers by utility tier (index 0 = no upgrade) */
+const SPAWN_COST_MULTIPLIERS = [1.0, 0.85, 0.85, 0.75];
+
+/** Cooldown multipliers by utility tier (index 0 = no upgrade) */
+const COOLDOWN_MULTIPLIERS = [1.0, 1.0, 0.8, 0.75];
+
+/** Get damage multiplier for an offense tier (0-3) */
+export function getOffenseMultiplier(tier: number): number {
+  return OFFENSE_MULTIPLIERS[Math.min(Math.max(tier, 0), 3)];
+}
+
+/** Get HP multiplier for a defense tier (0-3) */
+export function getDefenseMultiplier(tier: number): number {
+  return DEFENSE_MULTIPLIERS[Math.min(Math.max(tier, 0), 3)];
+}
+
+/** Get spawn cost multiplier for a utility tier (0-3) */
+export function getSpawnCostMultiplier(tier: number): number {
+  return SPAWN_COST_MULTIPLIERS[Math.min(Math.max(tier, 0), 3)];
+}
+
+/** Get cooldown multiplier for a utility tier (0-3) */
+export function getCooldownMultiplier(tier: number): number {
+  return COOLDOWN_MULTIPLIERS[Math.min(Math.max(tier, 0), 3)];
+}
