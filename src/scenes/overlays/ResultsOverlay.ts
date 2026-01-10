@@ -157,6 +157,6 @@ export class ResultsOverlay extends Phaser.Scene {
   private returnToMenu(): void {
     this.scene.stop('battle');
     this.scene.stop();
-    this.scene.start('menu');
+    this.scene.start('levelSelect');
   }
 }
