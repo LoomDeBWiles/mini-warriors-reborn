@@ -93,11 +93,16 @@ export class BattleScene extends Phaser.Scene {
     this.spawnBar.updateGold(this.gold);
   }
 
+  update(): void {
+    this.spawnBar.update();
+  }
+
   private handleSpawn(unitId: string): void {
     const unit = UNIT_DEFINITIONS[unitId];
     if (!unit) return;
 
     if (this.spendGold(unit.spawnCost)) {
+      this.spawnBar.startCooldown(unitId);
       console.log(`Spawning ${unit.name}`);
       // Unit spawning will be implemented in a future bead
     }
