@@ -8,10 +8,13 @@ import { WaveManager } from '../systems/WaveManager';
 import { UNIT_DEFINITIONS } from '../data/units';
 import { WaveDefinition } from '../data/enemies';
 import { EnemyUnit } from '../units/EnemyUnit';
+import { Base } from '../entities/Base';
 
 const INITIAL_GOLD = 50;
 const PLAYER_BASE_HP = 1000;
 const ENEMY_BASE_HP = 1000;
+const PLAYER_BASE_X = 50;
+const ENEMY_BASE_X = GAME_WIDTH - 50;
 const ENEMY_SPAWN_X = GAME_WIDTH - 50;
 const ENEMY_SPAWN_Y = GAME_HEIGHT / 2;
 
@@ -43,13 +46,13 @@ interface BattleSceneData {
 export class BattleScene extends Phaser.Scene {
   private stageId = 1;
   private gold = INITIAL_GOLD;
-  private playerBaseHp = PLAYER_BASE_HP;
-  private enemyBaseHp = ENEMY_BASE_HP;
 
   private hud!: HUD;
   private spawnBar!: SpawnBar;
   private waveManager!: WaveManager;
   private loadout: string[] = [];
+  private playerBase!: Base;
+  private enemyBase!: Base;
 
   constructor() {
     super({ key: 'battle' });
@@ -63,14 +66,29 @@ export class BattleScene extends Phaser.Scene {
 
     // Reset battle state
     this.gold = INITIAL_GOLD;
-    this.playerBaseHp = PLAYER_BASE_HP;
-    this.enemyBaseHp = ENEMY_BASE_HP;
   }
 
   create(): void {
     // Start battle music
     const audio = AudioManager.getInstance(this);
     audio?.switchMusic(MUSIC_KEYS.battle_easy);
+
+    // Create bases
+    this.playerBase = new Base({
+      scene: this,
+      x: PLAYER_BASE_X,
+      maxHp: PLAYER_BASE_HP,
+      isPlayerBase: true,
+      onDeath: () => this.endBattle(false),
+    });
+
+    this.enemyBase = new Base({
+      scene: this,
+      x: ENEMY_BASE_X,
+      maxHp: ENEMY_BASE_HP,
+      isPlayerBase: false,
+      onDeath: () => this.endBattle(true),
+    });
 
     // Create wave manager with default waves
     this.waveManager = new WaveManager(
@@ -87,8 +105,8 @@ export class BattleScene extends Phaser.Scene {
       scene: this,
       initialGold: this.gold,
       totalWaves: this.waveManager.getTotalWaves(),
-      playerBaseHp: this.playerBaseHp,
-      enemyBaseHp: this.enemyBaseHp,
+      playerBaseHp: PLAYER_BASE_HP,
+      enemyBaseHp: ENEMY_BASE_HP,
     });
 
     // Show wave 1 announcement
@@ -197,19 +215,21 @@ export class BattleScene extends Phaser.Scene {
   }
 
   damagePlayerBase(amount: number): void {
-    this.playerBaseHp = Math.max(0, this.playerBaseHp - amount);
-    this.hud.updatePlayerBaseHp(this.playerBaseHp, PLAYER_BASE_HP);
-    if (this.playerBaseHp <= 0) {
-      this.endBattle(false);
-    }
+    this.playerBase.takeDamage(amount);
+    this.hud.updatePlayerBaseHp(this.playerBase.getHp(), this.playerBase.getMaxHp());
   }
 
   damageEnemyBase(amount: number): void {
-    this.enemyBaseHp = Math.max(0, this.enemyBaseHp - amount);
-    this.hud.updateEnemyBaseHp(this.enemyBaseHp, ENEMY_BASE_HP);
-    if (this.enemyBaseHp <= 0) {
-      this.endBattle(true);
-    }
+    this.enemyBase.takeDamage(amount);
+    this.hud.updateEnemyBaseHp(this.enemyBase.getHp(), this.enemyBase.getMaxHp());
+  }
+
+  getPlayerBase(): Base {
+    return this.playerBase;
+  }
+
+  getEnemyBase(): Base {
+    return this.enemyBase;
   }
 
   advanceWave(): void {
@@ -233,7 +253,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private calculateStars(): number {
-    const hpRatio = this.playerBaseHp / PLAYER_BASE_HP;
+    const hpRatio = this.playerBase.getHpRatio();
     if (hpRatio >= 0.8) return 3;
     if (hpRatio >= 0.5) return 2;
     return 1;
