@@ -40,8 +40,7 @@ export class MenuScene extends Phaser.Scene {
     });
 
     startButton.on('pointerdown', () => {
-      // Will navigate to level select in future
-      console.log('Start game clicked - level select not yet implemented');
+      this.scene.start('loadout', { stageId: 1 });
     });
 
     // Version text

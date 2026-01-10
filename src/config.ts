@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene';
 import { PreloadScene } from './scenes/PreloadScene';
 import { MenuScene } from './scenes/MenuScene';
+import { LoadoutScene } from './scenes/LoadoutScene';
 import { PauseOverlay } from './scenes/overlays/PauseOverlay';
 
 export const GAME_WIDTH = 1280;
@@ -23,5 +24,5 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
       debug: false,
     },
   },
-  scene: [BootScene, PreloadScene, MenuScene, PauseOverlay],
+  scene: [BootScene, PreloadScene, MenuScene, LoadoutScene, PauseOverlay],
 };
