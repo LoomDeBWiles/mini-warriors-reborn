@@ -27,6 +27,8 @@ export interface UnitDefinition {
   isHealer?: boolean;
   /** Heal amount per tick for healer units */
   healAmount?: number;
+  /** Splash damage radius in pixels (AOE attacks) */
+  splashRadius?: number;
 }
 
 /**
@@ -77,6 +79,7 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
     damage: 25,
     range: 180,
     speed: 60,
+    splashRadius: 40,
   },
   healer: {
     id: 'healer',
