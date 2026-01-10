@@ -30,6 +30,7 @@ export class UpgradeScene extends Phaser.Scene {
   private upgradeTree: UpgradeTree | null = null;
   private unitButtons: Map<string, Phaser.GameObjects.Container> = new Map();
   private goldDisplay: Phaser.GameObjects.Text | null = null;
+  private confirmDialog: Phaser.GameObjects.Container | null = null;
 
   constructor() {
     super({ key: 'upgrade' });
@@ -235,6 +236,15 @@ export class UpgradeScene extends Phaser.Scene {
     const currentTier = gameState.unitUpgrades[unitId][path];
     if (tier !== currentTier + 1) return;
 
+    // Show confirmation dialog instead of purchasing directly
+    this.showConfirmDialog(cost, () => {
+      this.confirmPurchase(unitId, path, tier, cost);
+    });
+  }
+
+  private confirmPurchase(unitId: string, path: UpgradePath, tier: number, cost: number): void {
+    const gameState = this.getGameState();
+
     // Deduct gold and apply upgrade
     gameState.gold -= cost;
     gameState.unitUpgrades[unitId][path] = tier;
@@ -250,6 +260,85 @@ export class UpgradeScene extends Phaser.Scene {
     // Refresh tree
     if (this.upgradeTree) {
       this.upgradeTree.updateState(gameState.unitUpgrades[unitId], gameState.gold);
+    }
+  }
+
+  private showConfirmDialog(cost: number, onConfirm: () => void): void {
+    this.hideConfirmDialog();
+
+    const container = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2);
+    container.setDepth(2000);
+
+    // Dark overlay
+    const overlay = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.5);
+    overlay.setInteractive();
+    container.add(overlay);
+
+    // Dialog box
+    const dialogWidth = 280;
+    const dialogHeight = 120;
+    const dialogBg = this.add.rectangle(0, 0, dialogWidth, dialogHeight, 0x222222);
+    dialogBg.setStrokeStyle(2, 0x444444);
+    container.add(dialogBg);
+
+    // Cost text - matches acceptance criteria: "150g - Confirm?"
+    const costText = this.add.text(0, -25, `${cost}g - Confirm?`, {
+      fontSize: '24px',
+      color: '#ffd700',
+    });
+    costText.setOrigin(0.5);
+    container.add(costText);
+
+    // Button dimensions
+    const buttonWidth = 100;
+    const buttonHeight = 36;
+    const buttonY = 25;
+    const buttonSpacing = 20;
+
+    // Confirm button
+    const confirmBtn = this.add.rectangle(-buttonWidth / 2 - buttonSpacing / 2, buttonY, buttonWidth, buttonHeight, 0x4a7a4a);
+    confirmBtn.setStrokeStyle(1, 0x6ada6a);
+    confirmBtn.setInteractive({ useHandCursor: true });
+    container.add(confirmBtn);
+
+    const confirmText = this.add.text(-buttonWidth / 2 - buttonSpacing / 2, buttonY, 'Confirm', {
+      fontSize: '18px',
+      color: '#ffffff',
+    });
+    confirmText.setOrigin(0.5);
+    container.add(confirmText);
+
+    confirmBtn.on('pointerover', () => confirmBtn.setFillStyle(0x5a9a5a));
+    confirmBtn.on('pointerout', () => confirmBtn.setFillStyle(0x4a7a4a));
+    confirmBtn.on('pointerdown', () => {
+      this.hideConfirmDialog();
+      onConfirm();
+    });
+
+    // Cancel button
+    const cancelBtn = this.add.rectangle(buttonWidth / 2 + buttonSpacing / 2, buttonY, buttonWidth, buttonHeight, 0x5a4a4a);
+    cancelBtn.setStrokeStyle(1, 0x7a5a5a);
+    cancelBtn.setInteractive({ useHandCursor: true });
+    container.add(cancelBtn);
+
+    const cancelText = this.add.text(buttonWidth / 2 + buttonSpacing / 2, buttonY, 'Cancel', {
+      fontSize: '18px',
+      color: '#ffffff',
+    });
+    cancelText.setOrigin(0.5);
+    container.add(cancelText);
+
+    cancelBtn.on('pointerover', () => cancelBtn.setFillStyle(0x7a5a5a));
+    cancelBtn.on('pointerout', () => cancelBtn.setFillStyle(0x5a4a4a));
+    cancelBtn.on('pointerdown', () => this.hideConfirmDialog());
+
+    this.confirmDialog = container;
+  }
+
+  private hideConfirmDialog(): void {
+    if (this.confirmDialog) {
+      this.confirmDialog.destroy();
+      this.confirmDialog = null;
     }
   }
 
