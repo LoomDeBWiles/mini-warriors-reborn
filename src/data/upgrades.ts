@@ -59,3 +59,68 @@ export function getUpgradeCost(path: UpgradePath, tier: number): number {
 export function canPurchaseTier(ownedTier: number, targetTier: number): boolean {
   return targetTier === ownedTier + 1;
 }
+
+/**
+ * Castle upgrade definitions.
+ * Each castle upgrade has 5 levels.
+ */
+export interface CastleUpgradeDefinition {
+  id: string;
+  name: string;
+  description: string;
+  maxLevel: number;
+  /** Cost for each level (index 0 = level 1) */
+  costs: number[];
+  /** Effect per level */
+  effect: string;
+}
+
+export const CASTLE_UPGRADES: CastleUpgradeDefinition[] = [
+  {
+    id: 'fortification',
+    name: 'Fortification',
+    description: 'Increases base HP',
+    maxLevel: 5,
+    costs: [200, 400, 800, 1500, 3000],
+    effect: '+10% Base HP per level',
+  },
+  {
+    id: 'goldMine',
+    name: 'Gold Mine',
+    description: 'Passive gold income during battle',
+    maxLevel: 5,
+    costs: [300, 600, 1000, 1800, 3500],
+    effect: '+0.5 gold/sec per level',
+  },
+  {
+    id: 'armory',
+    name: 'Armory',
+    description: 'Increases all unit damage',
+    maxLevel: 5,
+    costs: [250, 500, 900, 1600, 3200],
+    effect: '+5% damage per level',
+  },
+  {
+    id: 'barracks',
+    name: 'Barracks',
+    description: 'Reduces unit spawn cooldowns',
+    maxLevel: 5,
+    costs: [250, 500, 900, 1600, 3200],
+    effect: '-5% cooldown per level',
+  },
+  {
+    id: 'treasury',
+    name: 'Treasury',
+    description: 'Increases gold from enemies',
+    maxLevel: 5,
+    costs: [350, 700, 1200, 2000, 4000],
+    effect: '+10% gold drops per level',
+  },
+];
+
+/** Get castle upgrade cost for a specific level */
+export function getCastleUpgradeCost(upgradeId: string, level: number): number {
+  const upgrade = CASTLE_UPGRADES.find((u) => u.id === upgradeId);
+  if (!upgrade || level < 1 || level > upgrade.maxLevel) return 0;
+  return upgrade.costs[level - 1];
+}

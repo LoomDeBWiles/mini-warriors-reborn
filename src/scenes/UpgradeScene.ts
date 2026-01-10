@@ -4,7 +4,7 @@ import { AudioManager } from '../managers/AudioManager';
 import { MUSIC_KEYS } from '../data/audio';
 import { getUnlockedUnits, UNIT_DEFINITIONS } from '../data/units';
 import { UpgradeTree } from '../ui/UpgradeTree';
-import { UpgradePath } from '../data/upgrades';
+import { UpgradePath, CASTLE_UPGRADES, getCastleUpgradeCost } from '../data/upgrades';
 
 const UNIT_BUTTON_SIZE = 70;
 const UNIT_BUTTON_SPACING = 10;
@@ -15,22 +15,35 @@ interface UnitUpgrades {
   utility: number;
 }
 
+interface CastleUpgrades {
+  [upgradeId: string]: number;
+}
+
 interface GameState {
   highestStage: number;
   gold: number;
   unitUpgrades: Record<string, UnitUpgrades>;
+  castleUpgrades: CastleUpgrades;
 }
 
+type TabType = 'units' | 'castle';
+
 /**
- * Scene for purchasing unit upgrades.
- * Shows unlocked units on the left, upgrade tree for selected unit on the right.
+ * Scene for purchasing unit and castle upgrades.
+ * Shows tabs at top for Units/Castle.
+ * Units tab: unlocked units on the left, upgrade tree for selected unit on the right.
+ * Castle tab: grid of castle upgrade bars with level indicators.
  */
 export class UpgradeScene extends Phaser.Scene {
+  private activeTab: TabType = 'units';
   private selectedUnitId: string | null = null;
   private upgradeTree: UpgradeTree | null = null;
   private unitButtons: Map<string, Phaser.GameObjects.Container> = new Map();
   private goldDisplay: Phaser.GameObjects.Text | null = null;
   private confirmDialog: Phaser.GameObjects.Container | null = null;
+  private tabButtons: Map<TabType, Phaser.GameObjects.Container> = new Map();
+  private unitPanel: Phaser.GameObjects.Container | null = null;
+  private castlePanel: Phaser.GameObjects.Container | null = null;
 
   constructor() {
     super({ key: 'upgrade' });
@@ -41,7 +54,7 @@ export class UpgradeScene extends Phaser.Scene {
     audio?.switchMusic(MUSIC_KEYS.menu);
 
     // Title
-    const title = this.add.text(GAME_WIDTH / 2, 30, 'Unit Upgrades', {
+    const title = this.add.text(GAME_WIDTH / 2, 30, 'Upgrades', {
       fontSize: '36px',
       color: '#ffffff',
       fontStyle: 'bold',
@@ -56,7 +69,10 @@ export class UpgradeScene extends Phaser.Scene {
     });
     this.goldDisplay.setOrigin(1, 0.5);
 
-    // Create unit selection panel
+    // Create tabs
+    this.createTabs();
+
+    // Create unit selection panel (default tab)
     this.createUnitPanel();
 
     // Select first unlocked unit by default
@@ -92,6 +108,7 @@ export class UpgradeScene extends Phaser.Scene {
       highestStage: 1,
       gold: 500,
       unitUpgrades: {},
+      castleUpgrades: {},
     };
   }
 
@@ -100,13 +117,285 @@ export class UpgradeScene extends Phaser.Scene {
     return gameState.unitUpgrades[unitId] ?? { offense: 0, defense: 0, utility: 0 };
   }
 
+  private getCastleUpgradeLevel(upgradeId: string): number {
+    const gameState = this.getGameState();
+    return gameState.castleUpgrades[upgradeId] ?? 0;
+  }
+
+  private createTabs(): void {
+    const tabY = 65;
+    const tabWidth = 100;
+    const tabHeight = 32;
+    const tabSpacing = 10;
+    const startX = GAME_WIDTH / 2 - (tabWidth + tabSpacing / 2);
+
+    const tabs: { type: TabType; label: string }[] = [
+      { type: 'units', label: 'Units' },
+      { type: 'castle', label: 'Castle' },
+    ];
+
+    tabs.forEach((tab, index) => {
+      const x = startX + index * (tabWidth + tabSpacing);
+      const container = this.add.container(x, tabY);
+
+      const isActive = tab.type === this.activeTab;
+      const bgColor = isActive ? 0x4a6a4a : 0x3a3a4a;
+      const strokeColor = isActive ? 0x6ada6a : 0x5a5a5a;
+
+      const bg = this.add.rectangle(0, 0, tabWidth, tabHeight, bgColor);
+      bg.setStrokeStyle(2, strokeColor);
+      container.add(bg);
+
+      const label = this.add.text(0, 0, tab.label, {
+        fontSize: '16px',
+        color: isActive ? '#ffffff' : '#aaaaaa',
+        fontStyle: isActive ? 'bold' : 'normal',
+      });
+      label.setOrigin(0.5);
+      container.add(label);
+
+      bg.setInteractive({ useHandCursor: true });
+      bg.on('pointerover', () => {
+        if (tab.type !== this.activeTab) {
+          bg.setFillStyle(0x4a4a5a);
+        }
+      });
+      bg.on('pointerout', () => {
+        if (tab.type !== this.activeTab) {
+          bg.setFillStyle(0x3a3a4a);
+        }
+      });
+      bg.on('pointerdown', () => {
+        this.switchTab(tab.type);
+      });
+
+      this.tabButtons.set(tab.type, container);
+    });
+  }
+
+  private switchTab(tab: TabType): void {
+    if (tab === this.activeTab) return;
+    this.activeTab = tab;
+
+    // Update tab appearance
+    this.tabButtons.forEach((container, tabType) => {
+      const bg = container.list[0] as Phaser.GameObjects.Rectangle;
+      const label = container.list[1] as Phaser.GameObjects.Text;
+      const isActive = tabType === tab;
+
+      bg.setFillStyle(isActive ? 0x4a6a4a : 0x3a3a4a);
+      bg.setStrokeStyle(2, isActive ? 0x6ada6a : 0x5a5a5a);
+      label.setColor(isActive ? '#ffffff' : '#aaaaaa');
+      label.setStyle({ fontStyle: isActive ? 'bold' : 'normal' });
+    });
+
+    // Show/hide panels
+    if (tab === 'units') {
+      this.hideCastlePanel();
+      this.showUnitsPanel();
+    } else {
+      this.hideUnitsPanel();
+      this.showCastlePanel();
+    }
+  }
+
+  private showUnitsPanel(): void {
+    if (this.unitPanel) {
+      this.unitPanel.setVisible(true);
+    } else {
+      this.createUnitPanel();
+    }
+    if (this.upgradeTree) {
+      this.upgradeTree.setVisible(true);
+    } else if (this.selectedUnitId) {
+      this.showUpgradeTree(this.selectedUnitId);
+    }
+  }
+
+  private hideUnitsPanel(): void {
+    if (this.unitPanel) {
+      this.unitPanel.setVisible(false);
+    }
+    if (this.upgradeTree) {
+      this.upgradeTree.setVisible(false);
+    }
+  }
+
+  private showCastlePanel(): void {
+    if (this.castlePanel) {
+      this.castlePanel.setVisible(true);
+    } else {
+      this.createCastlePanel();
+    }
+  }
+
+  private hideCastlePanel(): void {
+    if (this.castlePanel) {
+      this.castlePanel.setVisible(false);
+    }
+  }
+
+  private createCastlePanel(): void {
+    const container = this.add.container(0, 0);
+    this.castlePanel = container;
+
+    const panelX = 150;
+    const panelY = 120;
+    const barWidth = 400;
+    const barHeight = 50;
+    const barSpacing = 15;
+
+    // Panel background
+    const bgHeight = CASTLE_UPGRADES.length * (barHeight + barSpacing) + 40;
+    const panelBg = this.add.rectangle(
+      GAME_WIDTH / 2,
+      panelY + bgHeight / 2 - 10,
+      barWidth + 60,
+      bgHeight,
+      0x222222,
+      0.9
+    );
+    panelBg.setStrokeStyle(2, 0x444444);
+    container.add(panelBg);
+
+    // Header
+    const header = this.add.text(GAME_WIDTH / 2, panelY, 'Castle Upgrades', {
+      fontSize: '24px',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    });
+    header.setOrigin(0.5);
+    container.add(header);
+
+    // Create upgrade bars
+    CASTLE_UPGRADES.forEach((upgrade, index) => {
+      const y = panelY + 40 + index * (barHeight + barSpacing);
+      this.createCastleUpgradeBar(container, panelX, y, upgrade, barWidth, barHeight);
+    });
+  }
+
+  private createCastleUpgradeBar(
+    parent: Phaser.GameObjects.Container,
+    x: number,
+    y: number,
+    upgrade: typeof CASTLE_UPGRADES[0],
+    width: number,
+    height: number
+  ): void {
+    const gameState = this.getGameState();
+    const currentLevel = this.getCastleUpgradeLevel(upgrade.id);
+    const isMaxLevel = currentLevel >= upgrade.maxLevel;
+    const nextCost = isMaxLevel ? 0 : getCastleUpgradeCost(upgrade.id, currentLevel + 1);
+    const canAfford = gameState.gold >= nextCost;
+
+    // Background bar
+    const bg = this.add.rectangle(x + width / 2, y + height / 2, width, height, 0x3a3a4a);
+    bg.setStrokeStyle(1, 0x5a5a5a);
+    parent.add(bg);
+
+    // Upgrade name
+    const name = this.add.text(x + 10, y + 8, upgrade.name, {
+      fontSize: '16px',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    });
+    parent.add(name);
+
+    // Level indicator: "L2/5"
+    const levelText = this.add.text(x + width - 10, y + 8, `L${currentLevel}/${upgrade.maxLevel}`, {
+      fontSize: '16px',
+      color: isMaxLevel ? '#6ada6a' : '#ffd700',
+    });
+    levelText.setOrigin(1, 0);
+    parent.add(levelText);
+
+    // Progress segments
+    const segmentWidth = (width - 20) / upgrade.maxLevel;
+    const segmentHeight = 12;
+    const segmentY = y + height - segmentHeight - 8;
+
+    for (let i = 0; i < upgrade.maxLevel; i++) {
+      const segmentX = x + 10 + i * segmentWidth + 2;
+      const isFilled = i < currentLevel;
+      const segment = this.add.rectangle(
+        segmentX + (segmentWidth - 4) / 2,
+        segmentY + segmentHeight / 2,
+        segmentWidth - 4,
+        segmentHeight,
+        isFilled ? 0x6ada6a : 0x2a2a2a
+      );
+      segment.setStrokeStyle(1, isFilled ? 0x8afa8a : 0x4a4a4a);
+      parent.add(segment);
+    }
+
+    // Next cost or MAX text
+    if (isMaxLevel) {
+      const maxText = this.add.text(x + width / 2, y + height / 2 - 2, 'MAX', {
+        fontSize: '14px',
+        color: '#6ada6a',
+        fontStyle: 'bold',
+      });
+      maxText.setOrigin(0.5);
+      parent.add(maxText);
+    } else {
+      const costText = this.add.text(x + width / 2, y + height / 2 - 2, `Next: ${nextCost}g`, {
+        fontSize: '14px',
+        color: canAfford ? '#ffd700' : '#ff6666',
+      });
+      costText.setOrigin(0.5);
+      parent.add(costText);
+
+      // Make purchasable upgrades clickable
+      if (canAfford) {
+        bg.setInteractive({ useHandCursor: true });
+        bg.on('pointerover', () => bg.setFillStyle(0x4a5a4a));
+        bg.on('pointerout', () => bg.setFillStyle(0x3a3a4a));
+        bg.on('pointerdown', () => {
+          this.showConfirmDialog(nextCost, () => {
+            this.confirmCastlePurchase(upgrade.id, currentLevel + 1, nextCost);
+          });
+        });
+      }
+    }
+  }
+
+  private confirmCastlePurchase(upgradeId: string, level: number, cost: number): void {
+    const gameState = this.getGameState();
+
+    // Verify still affordable
+    if (gameState.gold < cost) return;
+
+    // Deduct gold and apply upgrade
+    gameState.gold -= cost;
+    if (!gameState.castleUpgrades) {
+      gameState.castleUpgrades = {};
+    }
+    gameState.castleUpgrades[upgradeId] = level;
+
+    // Save updated state
+    this.registry.set('gameState', gameState);
+
+    // Update gold display
+    if (this.goldDisplay) {
+      this.goldDisplay.setText(`Gold: ${gameState.gold}`);
+    }
+
+    // Rebuild castle panel
+    this.castlePanel?.destroy();
+    this.castlePanel = null;
+    this.createCastlePanel();
+  }
+
   private createUnitPanel(): void {
     const gameState = this.getGameState();
     const unlockedUnits = getUnlockedUnits(gameState.highestStage);
 
+    const container = this.add.container(0, 0);
+    this.unitPanel = container;
+
     // Panel background
     const panelX = 40;
-    const panelY = 80;
+    const panelY = 100;
     const panelWidth = 100;
     const panelHeight = unlockedUnits.length * (UNIT_BUTTON_SIZE + UNIT_BUTTON_SPACING) + 20;
 
@@ -119,26 +408,33 @@ export class UpgradeScene extends Phaser.Scene {
       0.8
     );
     panelBg.setStrokeStyle(1, 0x444444);
+    container.add(panelBg);
 
     // Create unit buttons
     unlockedUnits.forEach((unit, index) => {
       const x = panelX + panelWidth / 2;
       const y = panelY + 20 + index * (UNIT_BUTTON_SIZE + UNIT_BUTTON_SPACING) + UNIT_BUTTON_SIZE / 2;
-      this.createUnitButton(x, y, unit.id, unit.name);
+      this.createUnitButton(container, x, y, unit.id, unit.name);
     });
   }
 
-  private createUnitButton(x: number, y: number, unitId: string, unitName: string): void {
-    const container = this.add.container(x, y);
+  private createUnitButton(
+    parent: Phaser.GameObjects.Container,
+    x: number,
+    y: number,
+    unitId: string,
+    unitName: string
+  ): void {
+    const buttonContainer = this.add.container(x, y);
 
     const bg = this.add.rectangle(0, 0, UNIT_BUTTON_SIZE, UNIT_BUTTON_SIZE, 0x3a3a4a);
     bg.setStrokeStyle(2, 0x6a6a7a);
-    container.add(bg);
+    buttonContainer.add(bg);
 
     // Unit icon (colored circle)
     const iconColor = this.getUnitColor(unitId);
     const icon = this.add.circle(0, -8, 18, iconColor);
-    container.add(icon);
+    buttonContainer.add(icon);
 
     // Unit name (abbreviated)
     const abbrev = unitName.substring(0, 4);
@@ -147,7 +443,7 @@ export class UpgradeScene extends Phaser.Scene {
       color: '#ffffff',
     });
     label.setOrigin(0.5);
-    container.add(label);
+    buttonContainer.add(label);
 
     // Make interactive
     bg.setInteractive({ useHandCursor: true });
@@ -168,7 +464,8 @@ export class UpgradeScene extends Phaser.Scene {
       this.selectUnit(unitId);
     });
 
-    this.unitButtons.set(unitId, container);
+    parent.add(buttonContainer);
+    this.unitButtons.set(unitId, buttonContainer);
   }
 
   private selectUnit(unitId: string): void {
