@@ -284,21 +284,23 @@ export class BattleScene extends Phaser.Scene {
   }
 
   /**
-   * Pause the battle: freeze physics, tweens, and launch pause overlay.
+   * Pause the battle: freeze physics, tweens, audio, and launch pause overlay.
    */
   private pauseBattle(): void {
     if (this.scene.isPaused()) return;
     this.physics.pause();
     this.tweens.pauseAll();
+    AudioManager.getInstance(this)?.pause();
     this.scene.pause();
     this.scene.launch('pause', { pausedScene: 'battle' });
   }
 
   /**
-   * Resume the battle: restore physics and tweens after pause overlay closes.
+   * Resume the battle: restore physics, tweens, and audio after pause overlay closes.
    */
   private onResume(): void {
     this.physics.resume();
     this.tweens.resumeAll();
+    AudioManager.getInstance(this)?.resume();
   }
 }
