@@ -7,6 +7,8 @@ import {
   getDefenseMultiplier,
   getSpawnCostMultiplier,
   getCooldownMultiplier,
+  getCastleUpgradeCost,
+  CASTLE_UPGRADES,
 } from '../data/upgrades';
 
 export interface StatModifiers {
@@ -64,6 +66,38 @@ export class UpgradeManager {
       this.state.unitUpgrades[unitId] = { offense: 0, defense: 0, utility: 0 };
     }
     return this.state.unitUpgrades[unitId];
+  }
+
+  /**
+   * Attempt to purchase a castle upgrade.
+   * @param upgradeId - ID of the castle upgrade (e.g., 'fortification', 'goldMine')
+   * @param level - Target level (1-5)
+   * @returns true if purchase succeeded, false if insufficient gold or max level
+   */
+  purchaseCastle(upgradeId: string, level: number): boolean {
+    const upgradeDef = CASTLE_UPGRADES.find((u) => u.id === upgradeId);
+    if (!upgradeDef) {
+      return false;
+    }
+
+    if (level < 1 || level > upgradeDef.maxLevel) {
+      return false;
+    }
+
+    const currentLevel = this.state.castleUpgrades[upgradeId] ?? 0;
+    if (level !== currentLevel + 1) {
+      return false;
+    }
+
+    const cost = getCastleUpgradeCost(upgradeId, level);
+    if (cost === 0 || this.state.gold < cost) {
+      return false;
+    }
+
+    this.state.gold -= cost;
+    this.state.castleUpgrades[upgradeId] = level;
+
+    return true;
   }
 
   /**
