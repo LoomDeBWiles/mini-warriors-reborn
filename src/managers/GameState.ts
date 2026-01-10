@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { STAGE_DEFINITIONS } from '../data/stages';
 
 const SAVE_STORAGE_KEY = 'miniWarriorsSave';
 const CURRENT_VERSION = 1;
@@ -211,5 +212,34 @@ export class GameState {
     if (!this.data.unlockedUnits.includes(unitId)) {
       this.data.unlockedUnits.push(unitId);
     }
+  }
+
+  /**
+   * Check if a unit can be unlocked.
+   * Returns true only if the stage that unlocks this unit has been cleared
+   * AND player has the required gold (if the stage has a gold requirement).
+   */
+  canUnlockUnit(unitId: string): boolean {
+    // Find the stage that unlocks this unit
+    const stage = Object.values(STAGE_DEFINITIONS).find(
+      (s) => s.unlocksUnit === unitId
+    );
+
+    if (!stage) {
+      return false;
+    }
+
+    // Check if stage has been cleared (has stars recorded)
+    const cleared = this.data.stageStars[stage.id] !== undefined;
+    if (!cleared) {
+      return false;
+    }
+
+    // Check gold requirement if present
+    if (stage.requiresGold !== undefined && this.data.gold < stage.requiresGold) {
+      return false;
+    }
+
+    return true;
   }
 }
