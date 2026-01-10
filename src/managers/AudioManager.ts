@@ -1,0 +1,154 @@
+import Phaser from 'phaser';
+
+/**
+ * Central audio controller for music and sound effects.
+ * Handles browser audio unlock requirements - browsers require user interaction
+ * before audio can play, so we queue sounds until unlock occurs.
+ */
+export class AudioManager {
+  private static readonly REGISTRY_KEY = 'audioManager';
+
+  private scene: Phaser.Scene;
+  private musicVolume: number;
+  private sfxVolume: number;
+  private unlocked: boolean;
+  private pendingSounds: Array<{ key: string; config?: Phaser.Types.Sound.SoundConfig }>;
+
+  constructor(scene: Phaser.Scene, musicVolume = 1.0, sfxVolume = 1.0) {
+    this.scene = scene;
+    this.musicVolume = musicVolume;
+    this.sfxVolume = sfxVolume;
+    this.unlocked = false;
+    this.pendingSounds = [];
+
+    this.setupAudioUnlock();
+  }
+
+  /**
+   * Get the AudioManager instance from the game registry.
+   */
+  static getInstance(scene: Phaser.Scene): AudioManager | undefined {
+    return scene.registry.get(AudioManager.REGISTRY_KEY) as AudioManager | undefined;
+  }
+
+  /**
+   * Initialize and register the AudioManager in the game registry.
+   */
+  static init(scene: Phaser.Scene, musicVolume = 1.0, sfxVolume = 1.0): AudioManager {
+    const existing = AudioManager.getInstance(scene);
+    if (existing) {
+      return existing;
+    }
+
+    const manager = new AudioManager(scene, musicVolume, sfxVolume);
+    scene.registry.set(AudioManager.REGISTRY_KEY, manager);
+    return manager;
+  }
+
+  /**
+   * Set up audio unlock handling for browsers that require user interaction.
+   * Phaser's sound manager emits 'unlocked' when the audio context becomes available.
+   */
+  private setupAudioUnlock(): void {
+    const soundManager = this.scene.sound;
+
+    // Check if already unlocked (desktop browsers without autoplay restrictions)
+    if (!soundManager.locked) {
+      this.unlocked = true;
+      return;
+    }
+
+    // Wait for Phaser's unlock event which fires on first user interaction
+    soundManager.once('unlocked', () => {
+      this.unlocked = true;
+      this.playPendingSounds();
+    });
+  }
+
+  /**
+   * Play all sounds that were queued while audio was locked.
+   */
+  private playPendingSounds(): void {
+    for (const pending of this.pendingSounds) {
+      this.scene.sound.play(pending.key, pending.config);
+    }
+    this.pendingSounds = [];
+  }
+
+  /**
+   * Play a sound effect. If audio is locked, queues it for playback after unlock.
+   */
+  playSfx(key: string, config?: Phaser.Types.Sound.SoundConfig): void {
+    const soundConfig: Phaser.Types.Sound.SoundConfig = {
+      volume: this.sfxVolume,
+      ...config,
+    };
+
+    if (!this.unlocked) {
+      this.pendingSounds.push({ key, config: soundConfig });
+      return;
+    }
+
+    this.scene.sound.play(key, soundConfig);
+  }
+
+  /**
+   * Play background music. If audio is locked, queues it for playback after unlock.
+   */
+  playMusic(key: string, config?: Phaser.Types.Sound.SoundConfig): void {
+    const soundConfig: Phaser.Types.Sound.SoundConfig = {
+      volume: this.musicVolume,
+      loop: true,
+      ...config,
+    };
+
+    if (!this.unlocked) {
+      this.pendingSounds.push({ key, config: soundConfig });
+      return;
+    }
+
+    this.scene.sound.play(key, soundConfig);
+  }
+
+  /**
+   * Stop all music currently playing.
+   */
+  stopMusic(): void {
+    this.scene.sound.stopAll();
+  }
+
+  /**
+   * Set music volume (0-1).
+   */
+  setMusicVolume(volume: number): void {
+    this.musicVolume = Math.max(0, Math.min(1, volume));
+  }
+
+  /**
+   * Set SFX volume (0-1).
+   */
+  setSfxVolume(volume: number): void {
+    this.sfxVolume = Math.max(0, Math.min(1, volume));
+  }
+
+  /**
+   * Pause all audio.
+   */
+  pause(): void {
+    this.scene.sound.pauseAll();
+  }
+
+  /**
+   * Resume all audio.
+   */
+  resume(): void {
+    this.scene.sound.resumeAll();
+  }
+
+  /**
+   * Check if audio is currently locked (waiting for user interaction).
+   */
+  isLocked(): boolean {
+    return !this.unlocked;
+  }
+}
