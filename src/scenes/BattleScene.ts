@@ -79,6 +79,9 @@ export class BattleScene extends Phaser.Scene {
     // Escape key to pause
     this.input.keyboard?.on('keydown-ESC', () => this.pauseBattle());
 
+    // Listen for scene resume to restore physics and tweens
+    this.events.on('resume', () => this.onResume());
+
     // Stage info (temporary, for debugging)
     const stageInfo = this.add.text(20, GAME_HEIGHT - 100, `Stage ${this.stageId}`, {
       fontSize: '16px',
@@ -211,5 +214,13 @@ export class BattleScene extends Phaser.Scene {
     this.tweens.pauseAll();
     this.scene.pause();
     this.scene.launch('pause', { pausedScene: 'battle' });
+  }
+
+  /**
+   * Resume the battle: restore physics and tweens after pause overlay closes.
+   */
+  private onResume(): void {
+    this.physics.resume();
+    this.tweens.resumeAll();
   }
 }
