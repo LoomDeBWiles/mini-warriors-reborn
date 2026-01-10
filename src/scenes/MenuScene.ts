@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config';
+import { AudioManager } from '../managers/AudioManager';
+import { MUSIC_KEYS } from '../data/audio';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -7,6 +9,10 @@ export class MenuScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Start menu music with crossfade
+    const audio = AudioManager.getInstance(this);
+    audio?.switchMusic(MUSIC_KEYS.menu);
+
     // Title text
     const title = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 3, 'Mini Warriors Reborn', {
       fontSize: '48px',
