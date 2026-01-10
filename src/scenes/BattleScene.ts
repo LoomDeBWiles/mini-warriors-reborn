@@ -9,6 +9,7 @@ import { WaveDefinition } from '../data/enemies';
 import { EnemyUnit } from '../units/EnemyUnit';
 import { PlayerUnit, createPlayerUnit } from '../units/PlayerUnit';
 import { Base } from '../entities/Base';
+import { Unit, UnitState } from '../units/Unit';
 
 const INITIAL_GOLD = 50;
 const PLAYER_BASE_HP = 1000;
@@ -56,6 +57,7 @@ export class BattleScene extends Phaser.Scene {
   private playerBase!: Base;
   private enemyBase!: Base;
   private playerUnits!: Phaser.GameObjects.Group;
+  private enemyUnits!: Phaser.GameObjects.Group;
 
   constructor() {
     super({ key: 'battle' });
@@ -93,8 +95,9 @@ export class BattleScene extends Phaser.Scene {
       onDeath: () => this.endBattle(true),
     });
 
-    // Create player units group
+    // Create unit groups
     this.playerUnits = this.add.group();
+    this.enemyUnits = this.add.group();
 
     // Create wave manager with default waves
     this.waveManager = new WaveManager(
@@ -172,12 +175,130 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
-  update(): void {
+  update(_time: number, delta: number): void {
     this.spawnBar.update();
     this.waveManager.update();
+    this.updateUnitAI(delta);
+  }
+
+  /**
+   * Update all unit AI: state machines, targets, combat, and healing.
+   */
+  private updateUnitAI(deltaMs: number): void {
+    const playerUnits = this.playerUnits.getChildren() as PlayerUnit[];
+    const enemyUnits = this.enemyUnits.getChildren() as EnemyUnit[];
+
+    // Update player unit AI
+    for (const unit of playerUnits) {
+      if (!unit.active) continue;
+
+      // Find nearest enemy
+      const nearestEnemy = this.findNearestUnit(unit, enemyUnits);
+      const distanceToEnemy = nearestEnemy
+        ? Phaser.Math.Distance.Between(unit.x, unit.y, nearestEnemy.x, nearestEnemy.y)
+        : null;
+
+      // Find nearest damaged ally (for healers)
+      let distanceToDamagedAlly: number | null = null;
+      let nearestDamagedAlly: Unit | null = null;
+      if (unit.isHealer()) {
+        nearestDamagedAlly = this.findNearestDamagedAlly(unit, playerUnits);
+        if (nearestDamagedAlly) {
+          distanceToDamagedAlly = Phaser.Math.Distance.Between(
+            unit.x,
+            unit.y,
+            nearestDamagedAlly.x,
+            nearestDamagedAlly.y
+          );
+        }
+      }
+
+      // Update state machine
+      unit.updateStateMachine(distanceToEnemy, distanceToDamagedAlly);
+
+      // Set targets based on state
+      const state = unit.getState();
+      if (state === UnitState.Attacking && nearestEnemy) {
+        unit.setAttackTarget(nearestEnemy);
+      } else if (state === UnitState.Healing && nearestDamagedAlly) {
+        unit.setHealTarget(nearestDamagedAlly);
+      }
+
+      // Process attack/heal
+      unit.updateAttack(deltaMs);
+      unit.updateHeal(deltaMs);
+      unit.updateFlyingBob(deltaMs);
+    }
+
+    // Update enemy unit AI (simplified - enemies just attack players)
+    for (const enemy of enemyUnits) {
+      if (!enemy.active) continue;
+
+      const nearestPlayer = this.findNearestUnit(enemy, playerUnits);
+      const distanceToPlayer = nearestPlayer
+        ? Phaser.Math.Distance.Between(enemy.x, enemy.y, nearestPlayer.x, nearestPlayer.y)
+        : null;
+
+      enemy.updateStateMachine(distanceToPlayer, null);
+
+      if (enemy.getState() === UnitState.Attacking && nearestPlayer) {
+        enemy.setAttackTarget(nearestPlayer);
+      }
+
+      enemy.updateAttack(deltaMs);
+    }
+  }
+
+  /**
+   * Find nearest unit from a list of targets.
+   */
+  private findNearestUnit(source: Unit, targets: Unit[]): Unit | null {
+    let nearest: Unit | null = null;
+    let nearestDist = Infinity;
+
+    for (const target of targets) {
+      if (!target.active || target.getState() === UnitState.Dying) continue;
+
+      const dist = Phaser.Math.Distance.Between(source.x, source.y, target.x, target.y);
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearest = target;
+      }
+    }
+
+    return nearest;
+  }
+
+  /**
+   * Find nearest damaged ally for healers.
+   */
+  private findNearestDamagedAlly(healer: Unit, allies: Unit[]): Unit | null {
+    let nearest: Unit | null = null;
+    let nearestDist = Infinity;
+
+    for (const ally of allies) {
+      // Skip self, inactive, dying, or fully healed units
+      if (
+        ally === healer ||
+        !ally.active ||
+        ally.getState() === UnitState.Dying ||
+        ally.getHp() >= ally.getMaxHp()
+      ) {
+        continue;
+      }
+
+      const dist = Phaser.Math.Distance.Between(healer.x, healer.y, ally.x, ally.y);
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearest = ally;
+      }
+    }
+
+    return nearest;
   }
 
   private handleEnemySpawn(enemy: EnemyUnit): void {
+    this.enemyUnits.add(enemy);
     console.log(`Enemy spawned: ${enemy.definition.name} at (${enemy.x}, ${enemy.y})`);
   }
 

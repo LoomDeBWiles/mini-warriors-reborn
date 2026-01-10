@@ -40,6 +40,10 @@ export class Unit extends Phaser.GameObjects.Container {
   private attackCooldown = 0;
   /** Current attack target */
   private attackTarget: Unit | null = null;
+  /** Current heal target (for healer units) */
+  private healTarget: Unit | null = null;
+  /** Time remaining before next heal in milliseconds */
+  private healCooldown = 0;
 
   constructor(config: UnitConfig) {
     super(config.scene, config.x, config.y);
@@ -261,6 +265,65 @@ export class Unit extends Phaser.GameObjects.Container {
    */
   getHealAmount(): number {
     return this.definition.healAmount ?? 0;
+  }
+
+  /**
+   * Set the current heal target.
+   */
+  setHealTarget(target: Unit | null): void {
+    this.healTarget = target;
+  }
+
+  /**
+   * Get the current heal target.
+   */
+  getHealTarget(): Unit | null {
+    return this.healTarget;
+  }
+
+  /**
+   * Update healing logic. Call each frame with delta time.
+   * When in Healing state and target is valid, heals at intervals.
+   * Returns true if a heal was triggered this frame.
+   * Does nothing when unit is inactive (paused).
+   */
+  updateHeal(deltaMs: number): boolean {
+    if (!this.active) return false;
+
+    // Reduce cooldown
+    if (this.healCooldown > 0) {
+      this.healCooldown -= deltaMs;
+    }
+
+    // Only heal when in healing state
+    if (this.stateMachine.getState() !== UnitState.Healing) {
+      return false;
+    }
+
+    // Need a valid target that is damaged
+    if (!this.healTarget || !this.healTarget.active) {
+      this.healTarget = null;
+      return false;
+    }
+
+    // Target is fully healed, clear it
+    if (this.healTarget.getHp() >= this.healTarget.getMaxHp()) {
+      this.healTarget = null;
+      return false;
+    }
+
+    // Wait for cooldown
+    if (this.healCooldown > 0) {
+      return false;
+    }
+
+    // Reset cooldown (use same rate as attack cooldown)
+    this.healCooldown = DEFAULT_ATTACK_COOLDOWN_MS;
+
+    // Perform heal
+    this.healTarget.heal(this.getHealAmount());
+
+    return true;
   }
 
   private getUnitColor(): number {
