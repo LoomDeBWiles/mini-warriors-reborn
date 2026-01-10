@@ -134,6 +134,7 @@ export class Unit extends Phaser.GameObjects.Container {
     }
     this.flyTime += deltaMs / 1000;
     this.flyOffset = Math.sin(this.flyTime * FLY_BOB_SPEED) * FLY_BOB_AMPLITUDE;
+    this.sprite.y = this.flyOffset;
     return this.flyOffset;
   }
 
