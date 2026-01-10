@@ -1,16 +1,18 @@
 {
-  "pixellab": {
-    "type": "http",
-    "url": "https://api.pixellab.ai/mcp",
-    "headers": {
-      "Authorization": "Bearer ${PIXELLAB_API_KEY}"
-    }
-  },
-  "suno-mcp": {
-    "command": "/home/ben/tools/suno-mcp/.venv/bin/python",
-    "args": ["-m", "suno_mcp.server"],
-    "env": {
-      "PYTHONPATH": "/home/ben/tools/suno-mcp/src"
+  "mcpServers": {
+    "pixellab": {
+      "type": "http",
+      "url": "https://api.pixellab.ai/mcp",
+      "headers": {
+        "Authorization": "Bearer 0a6870c3-8533-495a-950f-b85598bee061"
+      }
+    },
+    "suno-mcp": {
+      "command": "/home/ben/tools/suno-mcp/.venv/bin/python",
+      "args": ["-m", "suno_mcp.server"],
+      "env": {
+        "PYTHONPATH": "/home/ben/tools/suno-mcp/src"
+      }
     }
   }
 }
