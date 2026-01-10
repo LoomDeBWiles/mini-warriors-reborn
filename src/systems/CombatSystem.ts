@@ -1,4 +1,5 @@
 import { Unit } from '../units/Unit';
+import { Projectile } from './Projectile';
 
 /**
  * Calculate damage from attacker to target.
@@ -7,6 +8,18 @@ import { Unit } from '../units/Unit';
  */
 export function calculateDamage(attacker: Unit, _target: Unit): number {
   return attacker.definition.damage;
+}
+
+/**
+ * Fire a projectile from attacker to target.
+ * The projectile travels to the target and deals damage on hit.
+ */
+export function fireProjectile(attacker: Unit, target: Unit): Projectile {
+  return new Projectile({
+    scene: attacker.scene,
+    attacker,
+    target,
+  });
 }
 
 /**
