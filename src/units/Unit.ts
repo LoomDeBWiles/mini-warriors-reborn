@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { UnitDefinition } from '../data/units';
 import { HealthBar } from '../ui/HealthBar';
+import { showDamageNumber } from '../ui/DamageNumbers';
 
 interface UnitConfig {
   scene: Phaser.Scene;
@@ -34,6 +35,8 @@ export class Unit extends Phaser.GameObjects.Container {
   }
 
   takeDamage(amount: number): void {
+    showDamageNumber(this.scene, this.x, this.y, amount);
+
     const newHp = this.healthBar.getHp() - amount;
     this.healthBar.setHp(newHp);
 
