@@ -5,11 +5,11 @@ import { MUSIC_KEYS } from '../data/audio';
 import { HUD } from '../ui/HUD';
 import { SpawnBar } from '../ui/SpawnBar';
 import { WaveManager } from '../systems/WaveManager';
-import { WaveDefinition } from '../data/enemies';
 import { EnemyUnit } from '../units/EnemyUnit';
 import { PlayerUnit, createPlayerUnit } from '../units/PlayerUnit';
 import { Base } from '../entities/Base';
 import { Unit, UnitState } from '../units/Unit';
+import { getStage } from '../data/stages';
 
 const INITIAL_GOLD = 50;
 const PLAYER_BASE_HP = 1000;
@@ -20,22 +20,6 @@ const ENEMY_SPAWN_X = GAME_WIDTH - 50;
 const ENEMY_SPAWN_Y = GAME_HEIGHT / 2;
 const PLAYER_SPAWN_X = 100;
 const PLAYER_SPAWN_Y = GAME_HEIGHT / 2;
-
-/** Default waves: 3 goblins per wave with 2s spacing, matching acceptance criteria */
-const DEFAULT_WAVE_DEFINITIONS: WaveDefinition[] = [
-  {
-    spawns: [{ enemyId: 'goblin', count: 3, spawnDelay: 0, spawnInterval: 2000 }],
-    delayAfter: 3000,
-  },
-  {
-    spawns: [{ enemyId: 'goblin', count: 4, spawnDelay: 0, spawnInterval: 2000 }],
-    delayAfter: 3000,
-  },
-  {
-    spawns: [{ enemyId: 'goblin', count: 5, spawnDelay: 0, spawnInterval: 2000 }],
-    delayAfter: 0,
-  },
-];
 
 interface BattleSceneData {
   stageId: number;
@@ -99,10 +83,11 @@ export class BattleScene extends Phaser.Scene {
     this.playerUnits = this.add.group();
     this.enemyUnits = this.add.group();
 
-    // Create wave manager with default waves
+    // Create wave manager with waves from stage definition
+    const stage = getStage(this.stageId);
     this.waveManager = new WaveManager(
       this,
-      DEFAULT_WAVE_DEFINITIONS,
+      stage.waves,
       ENEMY_SPAWN_X,
       ENEMY_SPAWN_Y,
       (enemy) => this.handleEnemySpawn(enemy)

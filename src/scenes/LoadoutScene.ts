@@ -84,7 +84,7 @@ export class LoadoutScene extends Phaser.Scene {
       backButton.setStyle({ backgroundColor: '#4a4a4a' });
     });
     backButton.on('pointerdown', () => {
-      this.scene.start('menu');
+      this.scene.start('levelSelect');
     });
   }
 
