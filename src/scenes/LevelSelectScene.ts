@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config';
 import { AudioManager } from '../managers/AudioManager';
 import { MUSIC_KEYS } from '../data/audio';
+import { getStageDefinition } from '../data/stages';
 
 const TOTAL_STAGES = 20;
 const GRID_COLS = 5;
@@ -19,6 +20,10 @@ interface GameState {
  * Stages 1 to highestStage+1 are clickable, rest are locked.
  */
 export class LevelSelectScene extends Phaser.Scene {
+  private tooltip: Phaser.GameObjects.Container | null = null;
+  private tooltipBg: Phaser.GameObjects.Rectangle | null = null;
+  private tooltipText: Phaser.GameObjects.Text | null = null;
+
   constructor() {
     super({ key: 'levelSelect' });
   }
@@ -79,6 +84,64 @@ export class LevelSelectScene extends Phaser.Scene {
     backButton.on('pointerdown', () => {
       this.scene.start('menu');
     });
+
+    // Create tooltip container (hidden by default)
+    this.createTooltip();
+  }
+
+  private createTooltip(): void {
+    this.tooltipText = this.add.text(0, 0, '', {
+      fontSize: '14px',
+      color: '#ffffff',
+      align: 'left',
+      lineSpacing: 4,
+    });
+
+    this.tooltipBg = this.add.rectangle(0, 0, 10, 10, 0x222222, 0.95);
+    this.tooltipBg.setStrokeStyle(1, 0x666666);
+
+    this.tooltip = this.add.container(0, 0, [this.tooltipBg, this.tooltipText]);
+    this.tooltip.setVisible(false);
+    this.tooltip.setDepth(100);
+  }
+
+  private showTooltip(stageId: number, x: number, y: number): void {
+    const stage = getStageDefinition(stageId);
+    if (!stage || !this.tooltip || !this.tooltipBg || !this.tooltipText) return;
+
+    const enemyList = stage.enemies.join(', ');
+    const content = `${stage.name}\nEnemies: ${enemyList}\nReward: ${stage.baseGold} gold`;
+
+    this.tooltipText.setText(content);
+    this.tooltipText.setOrigin(0, 0);
+
+    const padding = 10;
+    const width = this.tooltipText.width + padding * 2;
+    const height = this.tooltipText.height + padding * 2;
+
+    this.tooltipBg.setSize(width, height);
+    this.tooltipBg.setOrigin(0, 0);
+
+    this.tooltipText.setPosition(padding, padding);
+
+    // Position tooltip above the button, clamped to screen bounds
+    let tooltipX = x - width / 2;
+    let tooltipY = y - BUTTON_SIZE / 2 - height - 10;
+
+    // Clamp to screen edges
+    tooltipX = Math.max(10, Math.min(tooltipX, GAME_WIDTH - width - 10));
+    if (tooltipY < 10) {
+      tooltipY = y + BUTTON_SIZE / 2 + 10;
+    }
+
+    this.tooltip.setPosition(tooltipX, tooltipY);
+    this.tooltip.setVisible(true);
+  }
+
+  private hideTooltip(): void {
+    if (this.tooltip) {
+      this.tooltip.setVisible(false);
+    }
   }
 
   private createStageButton(
@@ -126,10 +189,12 @@ export class LevelSelectScene extends Phaser.Scene {
 
       bg.on('pointerover', () => {
         bg.setFillStyle(0x4a7aaa);
+        this.showTooltip(stageId, x, y);
       });
 
       bg.on('pointerout', () => {
         bg.setFillStyle(0x3a5a8a);
+        this.hideTooltip();
       });
 
       bg.on('pointerdown', () => {
