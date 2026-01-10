@@ -168,7 +168,7 @@ export class BattleScene extends Phaser.Scene {
     spawnKeys.forEach((keyName, slotIndex) => {
       keyboard.on(`keydown-${keyName}`, () => {
         const unitId = this.loadout[slotIndex];
-        if (unitId) {
+        if (unitId && this.spawnBar.canSpawn(unitId)) {
           this.handleSpawnInput(unitId);
         }
       });

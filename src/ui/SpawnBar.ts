@@ -237,6 +237,14 @@ export class SpawnBar extends Phaser.GameObjects.Container {
   }
 
   /**
+   * Check if a unit can be spawned (affordable and not on cooldown).
+   */
+  canSpawn(unitId: string): boolean {
+    const button = this.buttons.find((b) => b.unit.id === unitId);
+    return button !== undefined && this.isButtonEnabled(button);
+  }
+
+  /**
    * Update cooldown visuals. Should be called each frame during battle.
    */
   update(): void {
