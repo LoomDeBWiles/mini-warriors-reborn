@@ -74,6 +74,37 @@ export function getEffectiveSpawnStats(
 }
 
 /**
+ * Get effective display stats for a unit, applying all upgrade multipliers.
+ * Used for UI display in LoadoutGrid and similar pre-battle screens.
+ * Returns base values if no upgrades or GameState unavailable.
+ */
+export function getEffectiveDisplayStats(
+  scene: Phaser.Scene,
+  unitId: string
+): { hp: number; damage: number; spawnCost: number } {
+  const baseDefinition = UNIT_DEFINITIONS[unitId];
+  if (!baseDefinition) {
+    throw new Error(`Unknown unit ID: ${unitId}`);
+  }
+
+  const gameState = GameState.getInstance(scene);
+  const upgrades = gameState?.unitUpgrades[unitId];
+  const offenseTier = upgrades?.offense ?? 0;
+  const defenseTier = upgrades?.defense ?? 0;
+  const utilityTier = upgrades?.utility ?? 0;
+  const armoryLevel = gameState?.castleUpgrades['armory'] ?? 0;
+
+  // Apply offense upgrade + armory castle upgrade to damage
+  const damageMultiplier = getOffenseMultiplier(offenseTier) * getArmoryMultiplier(armoryLevel);
+
+  return {
+    hp: Math.round(baseDefinition.hp * getDefenseMultiplier(defenseTier)),
+    damage: Math.round(baseDefinition.damage * damageMultiplier),
+    spawnCost: Math.round(baseDefinition.spawnCost * getSpawnCostMultiplier(utilityTier)),
+  };
+}
+
+/**
  * Create a player unit from a unit definition.
  * Applies upgrade multipliers from GameState if available.
  * @param scene - The Phaser scene

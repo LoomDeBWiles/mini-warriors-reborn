@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH } from '../constants';
 import { UnitDefinition } from '../data/units';
+import { getEffectiveDisplayStats } from '../units/PlayerUnit';
 
 const CARD_WIDTH = 100;
 const CARD_HEIGHT = 120;
@@ -29,6 +30,8 @@ export class LoadoutGrid extends Phaser.GameObjects.Container {
   private onLoadoutChange?: (loadout: string[]) => void;
 
   private unitCards: Map<string, Phaser.GameObjects.Container> = new Map();
+  private effectiveStats: Map<string, { hp: number; damage: number; spawnCost: number }> =
+    new Map();
   private slotContainers: Phaser.GameObjects.Container[] = [];
 
   private tooltip: Phaser.GameObjects.Container | null = null;
@@ -55,6 +58,10 @@ export class LoadoutGrid extends Phaser.GameObjects.Container {
     this.add(gridTitle);
 
     this.availableUnits.forEach((unit, index) => {
+      // Compute and store effective stats with upgrades applied
+      const stats = getEffectiveDisplayStats(this.scene, unit.id);
+      this.effectiveStats.set(unit.id, stats);
+
       const row = Math.floor(index / CARDS_PER_ROW);
       const col = index % CARDS_PER_ROW;
       const x = col * (CARD_WIDTH + CARD_SPACING);
@@ -97,8 +104,10 @@ export class LoadoutGrid extends Phaser.GameObjects.Container {
     name.setOrigin(0.5);
     container.add(name);
 
-    // Cost indicator
-    const cost = this.scene.add.text(CARD_WIDTH / 2, 100, `${unit.spawnCost}g`, {
+    // Cost indicator (shows effective cost with upgrades applied)
+    const stats = this.effectiveStats.get(unit.id);
+    const costValue = stats?.spawnCost ?? unit.spawnCost;
+    const cost = this.scene.add.text(CARD_WIDTH / 2, 100, `${costValue}g`, {
       fontSize: '12px',
       color: '#ffd700',
     });
@@ -292,8 +301,12 @@ export class LoadoutGrid extends Phaser.GameObjects.Container {
   private showTooltip(unit: UnitDefinition, cardX: number, cardY: number): void {
     if (!this.tooltip || !this.tooltipBg || !this.tooltipText) return;
 
+    // Use effective stats with upgrades applied
+    const stats = this.effectiveStats.get(unit.id);
+    const hp = stats?.hp ?? unit.hp;
+    const damage = stats?.damage ?? unit.damage;
     const rangeText = unit.range > 0 ? `${unit.range}px` : 'Melee';
-    const content = `HP: ${unit.hp}\nDMG: ${unit.damage}\nRange: ${rangeText}`;
+    const content = `HP: ${hp}\nDMG: ${damage}\nRange: ${rangeText}`;
 
     this.tooltipText.setText(content);
     this.tooltipText.setOrigin(0, 0);
