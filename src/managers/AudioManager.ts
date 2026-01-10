@@ -31,6 +31,8 @@ export class AudioManager {
   private sfxPool: Map<string, Phaser.Sound.BaseSound[]>;
   /** Currently playing background music track */
   private currentMusic: Phaser.Sound.BaseSound | null;
+  /** Currently playing jingle (victory/defeat - responds to music volume but doesn't loop) */
+  private currentJingle: Phaser.Sound.BaseSound | null;
 
   constructor(scene: Phaser.Scene, musicVolume = 1.0, sfxVolume = 1.0) {
     this.game = scene.game;
@@ -40,6 +42,7 @@ export class AudioManager {
     this.pendingSounds = [];
     this.sfxPool = new Map();
     this.currentMusic = null;
+    this.currentJingle = null;
 
     this.setupAudioUnlock();
   }
@@ -233,8 +236,13 @@ export class AudioManager {
     const sound = this.game.sound.add(key, soundConfig);
     sound.play();
 
-    // Track as current music (only looped tracks, not jingles)
-    if (!isJingle) {
+    // Track as current music or jingle for volume control
+    if (isJingle) {
+      this.currentJingle = sound;
+      sound.once('complete', () => {
+        this.currentJingle = null;
+      });
+    } else {
       this.currentMusic = sound;
     }
   }
@@ -271,8 +279,13 @@ export class AudioManager {
     // Fade in new music to target volume
     SoundFade.fadeIn(newMusic, durationMs, this.musicVolume, 0);
 
-    // Track as current music (only looped tracks, not jingles)
-    if (!isJingle) {
+    // Track as current music or jingle for volume control
+    if (isJingle) {
+      this.currentJingle = newMusic;
+      newMusic.once('complete', () => {
+        this.currentJingle = null;
+      });
+    } else {
       this.currentMusic = newMusic;
     }
   }
@@ -283,10 +296,11 @@ export class AudioManager {
   stopMusic(): void {
     this.game.sound.stopAll();
     this.currentMusic = null;
+    this.currentJingle = null;
   }
 
   /**
-   * Set music volume (0-1). Updates all currently playing looped sounds.
+   * Set music volume (0-1). Updates looped music and jingles.
    */
   setMusicVolume(volume: number): void {
     this.musicVolume = Math.max(0, Math.min(1, volume));
@@ -297,17 +311,22 @@ export class AudioManager {
         (sound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(this.musicVolume);
       }
     }
+
+    // Also update jingle volume (jingles don't loop but should respond to music volume)
+    if (this.currentJingle?.isPlaying) {
+      (this.currentJingle as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(this.musicVolume);
+    }
   }
 
   /**
-   * Set SFX volume (0-1). Updates all currently playing non-looped sounds.
+   * Set SFX volume (0-1). Updates all currently playing non-looped sounds except jingles.
    */
   setSfxVolume(volume: number): void {
     this.sfxVolume = Math.max(0, Math.min(1, volume));
 
-    // Update volume on all currently playing non-looped sounds (SFX)
+    // Update volume on all currently playing non-looped sounds (SFX), excluding jingles
     for (const sound of this.game.sound.getAllPlaying()) {
-      if ('loop' in sound && !sound.loop) {
+      if ('loop' in sound && !sound.loop && sound !== this.currentJingle) {
         (sound as Phaser.Sound.WebAudioSound | Phaser.Sound.HTML5AudioSound).setVolume(this.sfxVolume);
       }
     }
