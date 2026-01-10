@@ -128,6 +128,9 @@ export class BattleScene extends Phaser.Scene {
     // Listen for scene resume to restore physics and tweens
     this.events.on('resume', () => this.onResume());
 
+    // Listen for gold earned from enemy kills
+    this.events.on('gold-earned', (data: { amount: number }) => this.addGold(data.amount));
+
     // Stage info (temporary, for debugging)
     const stageInfo = this.add.text(20, GAME_HEIGHT - 100, `Stage ${this.stageId}`, {
       fontSize: '16px',

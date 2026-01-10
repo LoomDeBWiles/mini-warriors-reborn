@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { Unit } from './Unit';
+import { Unit, UnitState } from './Unit';
 import { EnemyDefinition, ENEMY_DEFINITIONS } from '../data/enemies';
 
 interface EnemyUnitConfig {
@@ -38,6 +38,12 @@ export class EnemyUnit extends Unit {
 
   getGoldDrop(): number {
     return this.enemyDefinition.goldDrop;
+  }
+
+  protected override onStateChange(_oldState: UnitState, newState: UnitState): void {
+    if (newState === UnitState.Dying) {
+      this.scene.events.emit('gold-earned', { amount: this.enemyDefinition.goldDrop });
+    }
   }
 }
 
