@@ -30,7 +30,7 @@ const DEATH_ANIMATION_MS = 400;
 export class Unit extends Phaser.GameObjects.Container {
   readonly definition: UnitDefinition;
   private healthBar: HealthBar;
-  private sprite: Phaser.GameObjects.Arc;
+  private sprite: Phaser.GameObjects.Sprite;
   protected stateMachine: StateMachine;
   /** Accumulated time for flying bob animation (in seconds) */
   private flyTime = 0;
@@ -49,7 +49,7 @@ export class Unit extends Phaser.GameObjects.Container {
     super(config.scene, config.x, config.y);
     this.definition = config.definition;
 
-    this.sprite = this.scene.add.circle(0, 0, 20, this.getUnitColor());
+    this.sprite = this.scene.add.sprite(0, 0, this.definition.id);
     this.add(this.sprite);
 
     this.healthBar = new HealthBar({
@@ -327,19 +327,4 @@ export class Unit extends Phaser.GameObjects.Container {
     return true;
   }
 
-  private getUnitColor(): number {
-    const colors: Record<string, number> = {
-      swordsman: 0x4a90d9,
-      archer: 0x90d94a,
-      knight: 0x7a7a9a,
-      mage: 0x9a4ad9,
-      healer: 0x4ad99a,
-      assassin: 0x2a2a4a,
-      catapult: 0x9a6a4a,
-      griffin: 0xd9d94a,
-      paladin: 0xffd700,
-      dragon: 0xd94a4a,
-    };
-    return colors[this.definition.id] ?? 0x6a6a6a;
-  }
 }
