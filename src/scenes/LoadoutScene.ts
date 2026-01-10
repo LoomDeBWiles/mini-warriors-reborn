@@ -123,28 +123,9 @@ export class LoadoutScene extends Phaser.Scene {
   }
 
   private startBattle(): void {
-    // Battle scene not yet implemented - log and show message
-    console.log('Starting battle with loadout:', this.selectedLoadout);
-    console.log('Stage:', this.stageId);
-
-    // Show feedback text (temporary until BattleScene exists)
-    const feedbackText = this.add.text(
-      GAME_WIDTH / 2,
-      GAME_HEIGHT / 2,
-      `Battle starting with ${this.selectedLoadout.length} units!\n(BattleScene not yet implemented)`,
-      {
-        fontSize: '24px',
-        color: '#ffffff',
-        backgroundColor: '#000000aa',
-        padding: { x: 20, y: 15 },
-        align: 'center',
-      }
-    );
-    feedbackText.setOrigin(0.5);
-
-    // Remove feedback after 2 seconds
-    this.time.delayedCall(2000, () => {
-      feedbackText.destroy();
+    this.scene.start('battle', {
+      stageId: this.stageId,
+      loadout: this.selectedLoadout,
     });
   }
 }
