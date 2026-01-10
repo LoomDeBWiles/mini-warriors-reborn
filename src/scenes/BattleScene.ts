@@ -12,7 +12,7 @@ import { Base } from '../entities/Base';
 import { Unit, UnitState } from '../units/Unit';
 import { getStage } from '../data/stages';
 import { GameState } from '../managers/GameState';
-import { calculateRewards } from '../systems/EconomyManager';
+import { calculateRewards, EconomyManager } from '../systems/EconomyManager';
 
 const INITIAL_GOLD = 50;
 const PLAYER_BASE_HP = 1000;
@@ -47,6 +47,7 @@ export class BattleScene extends Phaser.Scene {
   private enemyBase!: Base;
   private playerUnits!: Phaser.GameObjects.Group;
   private enemyUnits!: Phaser.GameObjects.Group;
+  private economyManager!: EconomyManager;
 
   constructor() {
     super({ key: 'battle' });
@@ -138,6 +139,14 @@ export class BattleScene extends Phaser.Scene {
     // Listen for enemy deaths to track wave completion
     this.events.on('enemy-killed', () => this.waveManager.notifyEnemyKilled());
 
+    // Initialize economy manager for passive gold income from Gold Mine upgrades
+    const gameState = GameState.getInstance(this);
+    const goldMineLevel = gameState?.castleUpgrades['goldMine'] ?? 0;
+    this.economyManager = new EconomyManager(this, 0, undefined, goldMineLevel);
+    this.events.on('gold-changed', (data: { gold: number; added: number }) => {
+      this.addGold(data.added);
+    });
+
     // Stage info (temporary, for debugging)
     const stageInfo = this.add.text(20, GAME_HEIGHT - 100, `Stage ${this.stageId}`, {
       fontSize: '16px',
@@ -180,6 +189,7 @@ export class BattleScene extends Phaser.Scene {
     this.spawnBar.update();
     this.waveManager.update();
     this.updateUnitAI(delta);
+    this.economyManager.updatePassiveIncome(delta / 1000);
   }
 
   /**
