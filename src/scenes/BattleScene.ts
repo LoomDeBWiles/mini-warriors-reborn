@@ -40,6 +40,8 @@ export class BattleScene extends Phaser.Scene {
     this.stageId = data.stageId ?? 1;
     this.loadout = data.loadout ?? [];
 
+    console.log('BattleScene.init', { stageId: this.stageId, loadout: this.loadout });
+
     // Reset battle state
     this.gold = INITIAL_GOLD;
     this.playerBaseHp = PLAYER_BASE_HP;
@@ -73,7 +75,7 @@ export class BattleScene extends Phaser.Scene {
     pauseButton.setInteractive({ useHandCursor: true });
     pauseButton.on('pointerdown', () => {
       this.scene.pause();
-      this.scene.launch('pauseOverlay');
+      this.scene.launch('pause', { pausedScene: 'battle' });
     });
     pauseButton.setDepth(1001);
 
