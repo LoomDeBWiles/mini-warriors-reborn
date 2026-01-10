@@ -126,6 +126,10 @@ export class WaveManager {
     if (allComplete) {
       this.waveActive = false;
       this.waitingForKills = true;
+      // Check if all enemies already killed before any more kill events can fire
+      if (this.waveKillCount >= this.waveEnemyCount) {
+        this.triggerWaveComplete();
+      }
     }
   }
 
@@ -137,17 +141,22 @@ export class WaveManager {
     this.waveKillCount++;
 
     if (this.waitingForKills && this.waveKillCount >= this.waveEnemyCount) {
-      this.waitingForKills = false;
-
-      // Play wave complete sound
-      const audioManager = AudioManager.getInstance(this.scene);
-      audioManager?.playSfx('wave_complete');
-
-      // Notify callback with delay
-      const waveDef = this.waveDefinitions[this.currentWave - 1];
-      const delayAfter = waveDef?.delayAfter ?? 2000;
-      this.onWaveComplete?.(this.currentWave, delayAfter);
+      this.triggerWaveComplete();
     }
+  }
+
+  /**
+   * Handle wave completion: play sound and notify callback.
+   */
+  private triggerWaveComplete(): void {
+    this.waitingForKills = false;
+
+    const audioManager = AudioManager.getInstance(this.scene);
+    audioManager?.playSfx('wave_complete');
+
+    const waveDef = this.waveDefinitions[this.currentWave - 1];
+    const delayAfter = waveDef?.delayAfter ?? 2000;
+    this.onWaveComplete?.(this.currentWave, delayAfter);
   }
 
   private spawnEnemy(enemyId: string): void {
