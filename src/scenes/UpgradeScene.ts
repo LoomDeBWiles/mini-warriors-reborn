@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from '../config';
+import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
 import { AudioManager } from '../managers/AudioManager';
 import { GameState, UnitUpgrades } from '../managers/GameState';
 import { MUSIC_KEYS } from '../data/audio';

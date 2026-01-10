@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_HEIGHT } from '../config';
+import { GAME_HEIGHT } from '../constants';
 
 const BASE_WIDTH = 60;
 const BASE_HEIGHT = 120;

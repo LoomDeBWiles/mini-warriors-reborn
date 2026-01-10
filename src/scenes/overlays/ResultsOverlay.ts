@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from '../../config';
+import { GAME_WIDTH, GAME_HEIGHT } from '../../constants';
 
 const STAR_FILL_DURATION = 400;
 const STAR_FILL_DELAY = 300;

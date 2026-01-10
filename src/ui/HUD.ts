@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from '../config';
+import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
 
 const HUD_HEIGHT = 60;
 const WAVE_BANNER_SLIDE_DURATION = 400;

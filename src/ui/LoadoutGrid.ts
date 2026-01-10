@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH } from '../config';
+import { GAME_WIDTH } from '../constants';
 import { UnitDefinition } from '../data/units';
 
 const CARD_WIDTH = 100;

@@ -8,9 +8,7 @@ import { BattleScene } from './scenes/BattleScene';
 import { UpgradeScene } from './scenes/UpgradeScene';
 import { PauseOverlay } from './scenes/overlays/PauseOverlay';
 import { ResultsOverlay } from './scenes/overlays/ResultsOverlay';
-
-export const GAME_WIDTH = 1280;
-export const GAME_HEIGHT = 720;
+import { GAME_WIDTH, GAME_HEIGHT } from './constants';
 
 export const gameConfig: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,

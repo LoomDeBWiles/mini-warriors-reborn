@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from '../config';
+import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
 import { UnitDefinition, UNIT_DEFINITIONS } from '../data/units';
 import { getEffectiveSpawnStats } from '../units/PlayerUnit';
 
