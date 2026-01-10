@@ -499,12 +499,14 @@ export class BattleScene extends Phaser.Scene {
       gameState.recordBattle();
 
       if (victory && rewards) {
+        // Record stage completion first so canUnlockUnit sees the stage as cleared
+        gameState.recordStageCompletion(this.stageId, rewards.stars);
+
         // Check unit unlock eligibility BEFORE adding gold, so that battle rewards
         // don't count toward the gold requirement for elite units
         const canUnlock = rewards.unitUnlock && gameState.canUnlockUnit(rewards.unitUnlock);
 
         gameState.addGold(rewards.totalGold);
-        gameState.recordStageCompletion(this.stageId, rewards.stars);
 
         if (canUnlock && rewards.unitUnlock) {
           gameState.unlockUnit(rewards.unitUnlock);
