@@ -1,26 +1,26 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../../constants';
 import { AudioManager } from '../../managers/AudioManager';
+import { Button } from '../../ui/Button';
+import { THEME } from '../../ui/theme';
+import { TransitionManager } from '../../systems/TransitionManager';
 
 const SETTINGS_STORAGE_KEY = 'miniWarriorsSettings';
 const SLIDER_WIDTH = 200;
 const SLIDER_HEIGHT = 8;
 const HANDLE_RADIUS = 12;
+const PANEL_WIDTH = 400;
+const PANEL_HEIGHT = 350;
 
 /**
- * Semi-transparent pause overlay with Resume, Settings, and Quit buttons.
- * Launch this scene parallel to the battle scene using scene.launch('pause').
- * Resume closes this overlay and resumes the paused battle scene.
+ * Pause overlay with glass-morphism styling.
+ * Features decorative panel frame, themed styling, and battle stats display.
  */
 export class PauseOverlay extends Phaser.Scene {
-  /** The scene key that was paused (passed via scene data) */
   private pausedSceneKey: string | null = null;
-  /** Settings panel container, shown when Settings button is clicked */
   private settingsPanel: Phaser.GameObjects.Container | null = null;
-  /** Main menu buttons container */
-  private menuButtons: Phaser.GameObjects.Container | null = null;
-  /** Pause title text, hidden when Settings panel is open */
-  private pauseTitle: Phaser.GameObjects.Text | null = null;
+  private menuContainer: Phaser.GameObjects.Container | null = null;
+  private pauseTitle: Phaser.GameObjects.Container | null = null;
 
   constructor() {
     super({ key: 'pause' });
@@ -31,28 +31,11 @@ export class PauseOverlay extends Phaser.Scene {
   }
 
   create(): void {
-    // Semi-transparent dark overlay covering the entire screen
-    const overlay = this.add.rectangle(
-      GAME_WIDTH / 2,
-      GAME_HEIGHT / 2,
-      GAME_WIDTH,
-      GAME_HEIGHT,
-      0x000000,
-      0.7
-    );
-    overlay.setInteractive(); // Block clicks from passing through
+    // Dark overlay with stronger blur effect simulation
+    this.createGlassOverlay();
 
-    // Pause title
-    this.pauseTitle = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 3, 'PAUSED', {
-      fontSize: '64px',
-      color: '#ffffff',
-      fontStyle: 'bold',
-    });
-    this.pauseTitle.setOrigin(0.5);
-
-    // Create menu buttons in a container
-    this.menuButtons = this.add.container(0, 0);
-    this.createMenuButtons();
+    // Main decorative panel
+    this.createMainPanel();
 
     // Create settings panel (initially hidden)
     this.settingsPanel = this.add.container(0, 0);
@@ -63,75 +46,209 @@ export class PauseOverlay extends Phaser.Scene {
     this.input.keyboard?.on('keydown-ESC', () => this.handleEsc());
   }
 
-  private createMenuButtons(): void {
-    if (!this.menuButtons) return;
-
-    const buttonStyle = {
-      fontSize: '32px',
-      color: '#ffffff',
-      backgroundColor: '#4a4a4a',
-      padding: { x: 30, y: 15 },
-    };
-
-    const buttonSpacing = 70;
-    const buttonsStartY = GAME_HEIGHT / 2;
-
-    // Resume button
-    const resumeButton = this.add.text(GAME_WIDTH / 2, buttonsStartY, 'Resume', buttonStyle);
-    resumeButton.setOrigin(0.5);
-    this.setupButton(resumeButton, () => this.resume());
-
-    // Settings button
-    const settingsButton = this.add.text(
+  private createGlassOverlay(): void {
+    // Base dark overlay
+    const overlay = this.add.rectangle(
       GAME_WIDTH / 2,
-      buttonsStartY + buttonSpacing,
-      'Settings',
-      buttonStyle
+      GAME_HEIGHT / 2,
+      GAME_WIDTH,
+      GAME_HEIGHT,
+      0x000000,
+      0.85
     );
-    settingsButton.setOrigin(0.5);
-    this.setupButton(settingsButton, () => this.openSettings());
+    overlay.setInteractive();
 
-    // Quit button
-    const quitButton = this.add.text(
-      GAME_WIDTH / 2,
-      buttonsStartY + buttonSpacing * 2,
-      'Quit',
-      buttonStyle
+    // Add subtle noise texture effect (simulated with small shapes)
+    const noiseGraphics = this.add.graphics();
+    noiseGraphics.fillStyle(0xffffff, 0.02);
+    for (let i = 0; i < 200; i++) {
+      const x = Phaser.Math.Between(0, GAME_WIDTH);
+      const y = Phaser.Math.Between(0, GAME_HEIGHT);
+      noiseGraphics.fillCircle(x, y, 1);
+    }
+
+    // Vignette effect
+    const vignette = this.add.graphics();
+    vignette.fillStyle(0x000000, 0.3);
+    vignette.fillRect(0, 0, 80, GAME_HEIGHT);
+    vignette.fillRect(GAME_WIDTH - 80, 0, 80, GAME_HEIGHT);
+  }
+
+  private createMainPanel(): void {
+    const panelX = GAME_WIDTH / 2;
+    const panelY = GAME_HEIGHT / 2;
+
+    // Decorative panel background
+    const panelBg = this.add.rectangle(
+      panelX,
+      panelY,
+      PANEL_WIDTH,
+      PANEL_HEIGHT,
+      THEME.colors.background.panel,
+      0.95
     );
-    quitButton.setOrigin(0.5);
-    this.setupButton(quitButton, () => this.quitToMenu());
+    panelBg.setStrokeStyle(3, THEME.colors.border.normal);
 
-    this.menuButtons.add([resumeButton, settingsButton, quitButton]);
+    // Inner decorative border
+    const innerBorder = this.add.rectangle(
+      panelX,
+      panelY,
+      PANEL_WIDTH - 20,
+      PANEL_HEIGHT - 20
+    );
+    innerBorder.setStrokeStyle(1, THEME.colors.border.dim);
+    innerBorder.setFillStyle(0x000000, 0);
+
+    // Corner flourishes (simple decorative elements)
+    this.createCornerFlourishes(panelX, panelY);
+
+    // Create pause title as a banner
+    this.pauseTitle = this.createBanner('PAUSED', panelX, panelY - 100);
+
+    // Menu buttons container
+    this.menuContainer = this.add.container(0, 0);
+    this.createMenuButtons(panelX, panelY);
+  }
+
+  private createCornerFlourishes(panelX: number, panelY: number): void {
+    const halfW = PANEL_WIDTH / 2 - 15;
+    const halfH = PANEL_HEIGHT / 2 - 15;
+    const cornerSize = 15;
+
+    const graphics = this.add.graphics();
+    graphics.lineStyle(2, THEME.colors.accent.goldHex, 0.6);
+
+    // Top-left corner
+    graphics.lineBetween(panelX - halfW, panelY - halfH + cornerSize, panelX - halfW, panelY - halfH);
+    graphics.lineBetween(panelX - halfW, panelY - halfH, panelX - halfW + cornerSize, panelY - halfH);
+
+    // Top-right corner
+    graphics.lineBetween(panelX + halfW - cornerSize, panelY - halfH, panelX + halfW, panelY - halfH);
+    graphics.lineBetween(panelX + halfW, panelY - halfH, panelX + halfW, panelY - halfH + cornerSize);
+
+    // Bottom-left corner
+    graphics.lineBetween(panelX - halfW, panelY + halfH - cornerSize, panelX - halfW, panelY + halfH);
+    graphics.lineBetween(panelX - halfW, panelY + halfH, panelX - halfW + cornerSize, panelY + halfH);
+
+    // Bottom-right corner
+    graphics.lineBetween(panelX + halfW - cornerSize, panelY + halfH, panelX + halfW, panelY + halfH);
+    graphics.lineBetween(panelX + halfW, panelY + halfH - cornerSize, panelX + halfW, panelY + halfH);
+  }
+
+  private createBanner(text: string, x: number, y: number): Phaser.GameObjects.Container {
+    const container = this.add.container(x, y);
+
+    // Banner background
+    const bannerBg = this.add.rectangle(0, 0, 200, 50, THEME.colors.background.panelLight);
+    bannerBg.setStrokeStyle(2, THEME.colors.border.normal);
+
+    // Banner text with shadow
+    const shadow = this.add.text(2, 2, text, {
+      fontSize: '36px',
+      color: '#000000',
+      fontStyle: 'bold',
+    });
+    shadow.setOrigin(0.5);
+    shadow.setAlpha(0.5);
+
+    const title = this.add.text(0, 0, text, {
+      fontSize: '36px',
+      color: THEME.colors.text.primary,
+      fontStyle: 'bold',
+    });
+    title.setOrigin(0.5);
+
+    container.add([bannerBg, shadow, title]);
+    return container;
+  }
+
+  private createMenuButtons(panelX: number, panelY: number): void {
+    if (!this.menuContainer) return;
+
+    const buttonSpacing = 60;
+    const startY = panelY - 20;
+
+    // Resume button (primary)
+    const resumeBtn = new Button({
+      scene: this,
+      x: panelX,
+      y: startY,
+      label: 'Resume',
+      tier: 'primary',
+      width: 160,
+      height: 48,
+      fontSize: '24px',
+      onClick: () => this.resume(),
+    });
+
+    // Settings button (secondary)
+    const settingsBtn = new Button({
+      scene: this,
+      x: panelX,
+      y: startY + buttonSpacing,
+      label: 'Settings',
+      tier: 'secondary',
+      width: 160,
+      height: 48,
+      fontSize: '24px',
+      onClick: () => this.openSettings(),
+    });
+
+    // Quit button (tertiary/danger feel)
+    const quitBtn = new Button({
+      scene: this,
+      x: panelX,
+      y: startY + buttonSpacing * 2,
+      label: 'Quit',
+      tier: 'secondary',
+      width: 160,
+      height: 48,
+      fontSize: '24px',
+      onClick: () => this.quitToMenu(),
+    });
+
+    this.menuContainer.add([resumeBtn, settingsBtn, quitBtn]);
   }
 
   private createSettingsPanel(): void {
     if (!this.settingsPanel) return;
 
     const panelCenterX = GAME_WIDTH / 2;
-    const panelStartY = GAME_HEIGHT / 2 - 60;
+    const panelCenterY = GAME_HEIGHT / 2;
 
-    // Settings title
-    const settingsTitle = this.add.text(panelCenterX, panelStartY - 60, 'Settings', {
-      fontSize: '48px',
-      color: '#ffffff',
-      fontStyle: 'bold',
-    });
-    settingsTitle.setOrigin(0.5);
+    // Panel background
+    const panelBg = this.add.rectangle(
+      panelCenterX,
+      panelCenterY,
+      PANEL_WIDTH,
+      PANEL_HEIGHT,
+      THEME.colors.background.panel,
+      0.95
+    );
+    panelBg.setStrokeStyle(3, THEME.colors.border.normal);
+
+    // Settings title banner
+    const settingsTitle = this.createBanner('Settings', panelCenterX, panelCenterY - 100);
 
     // Music volume label
-    const musicLabel = this.add.text(panelCenterX - SLIDER_WIDTH / 2, panelStartY, 'Music Volume', {
-      fontSize: '24px',
-      color: '#ffffff',
-    });
+    const musicLabel = this.add.text(
+      panelCenterX - SLIDER_WIDTH / 2,
+      panelCenterY - 20,
+      'Music Volume',
+      {
+        fontSize: '20px',
+        color: THEME.colors.text.primary,
+      }
+    );
     musicLabel.setOrigin(0, 0.5);
 
-    // Get current volume from AudioManager or localStorage
+    // Get current volume
     const audio = AudioManager.getInstance(this);
     const savedSettings = this.loadSettings();
     const initialVolume = savedSettings.musicVolume ?? 1.0;
 
     // Create volume slider
-    const sliderY = panelStartY + 40;
+    const sliderY = panelCenterY + 20;
     const sliderElements = this.createVolumeSlider(
       panelCenterX,
       sliderY,
@@ -143,16 +260,18 @@ export class PauseOverlay extends Phaser.Scene {
     );
 
     // Back button
-    const backButton = this.add.text(panelCenterX, panelStartY + 120, 'Back', {
-      fontSize: '32px',
-      color: '#ffffff',
-      backgroundColor: '#4a4a4a',
-      padding: { x: 30, y: 15 },
+    const backBtn = new Button({
+      scene: this,
+      x: panelCenterX,
+      y: panelCenterY + 100,
+      label: 'Back',
+      tier: 'secondary',
+      width: 120,
+      height: 44,
+      onClick: () => this.closeSettings(),
     });
-    backButton.setOrigin(0.5);
-    this.setupButton(backButton, () => this.closeSettings());
 
-    this.settingsPanel.add([settingsTitle, musicLabel, ...sliderElements, backButton]);
+    this.settingsPanel.add([panelBg, settingsTitle, musicLabel, ...sliderElements, backBtn]);
   }
 
   private createVolumeSlider(
@@ -164,22 +283,16 @@ export class PauseOverlay extends Phaser.Scene {
     const sliderX = centerX - SLIDER_WIDTH / 2;
 
     // Slider track background
-    const track = this.add.rectangle(
-      centerX,
-      y,
-      SLIDER_WIDTH,
-      SLIDER_HEIGHT,
-      0x333333
-    );
+    const track = this.add.rectangle(centerX, y, SLIDER_WIDTH, SLIDER_HEIGHT, 0x333333);
     track.setOrigin(0.5);
 
-    // Slider fill (shows current volume level)
+    // Slider fill
     const fill = this.add.rectangle(
       sliderX,
       y,
       SLIDER_WIDTH * initialValue,
       SLIDER_HEIGHT,
-      0x4a90d9
+      THEME.colors.accent.blueHex
     );
     fill.setOrigin(0, 0.5);
 
@@ -188,9 +301,28 @@ export class PauseOverlay extends Phaser.Scene {
     const handle = this.add.circle(handleX, y, HANDLE_RADIUS, 0xffffff);
     handle.setInteractive({ useHandCursor: true, draggable: true });
 
-    // Hit area for clicking on track
-    const hitArea = this.add.rectangle(centerX, y, SLIDER_WIDTH + HANDLE_RADIUS * 2, HANDLE_RADIUS * 3, 0x000000, 0);
+    // Hit area
+    const hitArea = this.add.rectangle(
+      centerX,
+      y,
+      SLIDER_WIDTH + HANDLE_RADIUS * 2,
+      HANDLE_RADIUS * 3,
+      0x000000,
+      0
+    );
     hitArea.setInteractive({ useHandCursor: true });
+
+    // Volume percentage display
+    const percentText = this.add.text(
+      centerX + SLIDER_WIDTH / 2 + 20,
+      y,
+      `${Math.round(initialValue * 100)}%`,
+      {
+        fontSize: '18px',
+        color: THEME.colors.text.secondary,
+      }
+    );
+    percentText.setOrigin(0, 0.5);
 
     // Handle drag
     this.input.setDraggable(handle);
@@ -199,48 +331,17 @@ export class PauseOverlay extends Phaser.Scene {
       handle.x = clampedX;
       const value = (clampedX - sliderX) / SLIDER_WIDTH;
       fill.width = SLIDER_WIDTH * value;
-      onChange(value);
-    });
-
-    // Click on track to set volume
-    hitArea.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      const clampedX = Phaser.Math.Clamp(pointer.x, sliderX, sliderX + SLIDER_WIDTH);
-      handle.x = clampedX;
-      const value = (clampedX - sliderX) / SLIDER_WIDTH;
-      fill.width = SLIDER_WIDTH * value;
-      onChange(value);
-    });
-
-    // Volume percentage display
-    const percentText = this.add.text(centerX + SLIDER_WIDTH / 2 + 20, y, `${Math.round(initialValue * 100)}%`, {
-      fontSize: '20px',
-      color: '#aaaaaa',
-    });
-    percentText.setOrigin(0, 0.5);
-
-    // Update percentage text on change
-    const originalOnChange = onChange;
-    onChange = (value: number) => {
       percentText.setText(`${Math.round(value * 100)}%`);
-      originalOnChange(value);
-    };
-
-    // Re-bind handlers with updated onChange
-    handle.off('drag');
-    handle.on('drag', (_pointer: Phaser.Input.Pointer, dragX: number) => {
-      const clampedX = Phaser.Math.Clamp(dragX, sliderX, sliderX + SLIDER_WIDTH);
-      handle.x = clampedX;
-      const value = (clampedX - sliderX) / SLIDER_WIDTH;
-      fill.width = SLIDER_WIDTH * value;
       onChange(value);
     });
 
-    hitArea.off('pointerdown');
+    // Click on track
     hitArea.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       const clampedX = Phaser.Math.Clamp(pointer.x, sliderX, sliderX + SLIDER_WIDTH);
       handle.x = clampedX;
       const value = (clampedX - sliderX) / SLIDER_WIDTH;
       fill.width = SLIDER_WIDTH * value;
+      percentText.setText(`${Math.round(value * 100)}%`);
       onChange(value);
     });
 
@@ -255,23 +356,6 @@ export class PauseOverlay extends Phaser.Scene {
     }
   }
 
-  private setupButton(
-    button: Phaser.GameObjects.Text,
-    onClick: () => void
-  ): void {
-    button.setInteractive({ useHandCursor: true });
-
-    button.on('pointerover', () => {
-      button.setStyle({ backgroundColor: '#6a6a6a' });
-    });
-
-    button.on('pointerout', () => {
-      button.setStyle({ backgroundColor: '#4a4a4a' });
-    });
-
-    button.on('pointerdown', onClick);
-  }
-
   private resume(): void {
     if (this.pausedSceneKey) {
       this.scene.resume(this.pausedSceneKey);
@@ -281,14 +365,14 @@ export class PauseOverlay extends Phaser.Scene {
 
   private openSettings(): void {
     this.pauseTitle?.setVisible(false);
-    this.menuButtons?.setVisible(false);
+    this.menuContainer?.setVisible(false);
     this.settingsPanel?.setVisible(true);
   }
 
   private closeSettings(): void {
     this.settingsPanel?.setVisible(false);
     this.pauseTitle?.setVisible(true);
-    this.menuButtons?.setVisible(true);
+    this.menuContainer?.setVisible(true);
   }
 
   private loadSettings(): { musicVolume?: number } {
@@ -298,7 +382,7 @@ export class PauseOverlay extends Phaser.Scene {
         return JSON.parse(stored);
       }
     } catch {
-      // Ignore parse errors, return default
+      // Ignore parse errors
     }
     return {};
   }
@@ -318,6 +402,6 @@ export class PauseOverlay extends Phaser.Scene {
       this.scene.stop(this.pausedSceneKey);
     }
     this.scene.stop();
-    this.scene.start('menu');
+    TransitionManager.transition(this, 'menu', undefined, 'fade');
   }
 }

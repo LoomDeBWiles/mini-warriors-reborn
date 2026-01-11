@@ -6,6 +6,8 @@ import { MUSIC_KEYS } from '../data/audio';
 import { getUnlockedUnits, UNIT_DEFINITIONS } from '../data/units';
 import { UpgradeTree } from '../ui/UpgradeTree';
 import { UpgradePath, CASTLE_UPGRADES, getCastleUpgradeCost } from '../data/upgrades';
+import { Button } from '../ui/Button';
+import { TransitionManager } from '../systems/TransitionManager';
 
 const UNIT_BUTTON_SIZE = 70;
 const UNIT_BUTTON_SPACING = 10;
@@ -34,6 +36,18 @@ export class UpgradeScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Reset camera and fade in
+    TransitionManager.resetCamera(this);
+    TransitionManager.fadeIn(this);
+
+    // Add background with parallax
+    const bg = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg_upgrade');
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      const offsetX = (pointer.x - GAME_WIDTH / 2) * 0.008;
+      const offsetY = (pointer.y - GAME_HEIGHT / 2) * 0.008;
+      bg.setPosition(GAME_WIDTH / 2 + offsetX, GAME_HEIGHT / 2 + offsetY);
+    });
+
     const audio = AudioManager.getInstance(this);
     audio?.switchMusic(MUSIC_KEYS.menu);
 
@@ -66,23 +80,17 @@ export class UpgradeScene extends Phaser.Scene {
     }
 
     // Back button
-    const backButton = this.add.text(50, GAME_HEIGHT - 50, 'Back', {
-      fontSize: '24px',
-      color: '#ffffff',
-      backgroundColor: '#4a4a4a',
-      padding: { x: 20, y: 10 },
-    });
-    backButton.setOrigin(0, 0.5);
-    backButton.setInteractive({ useHandCursor: true });
-
-    backButton.on('pointerover', () => {
-      backButton.setStyle({ backgroundColor: '#6a6a6a' });
-    });
-    backButton.on('pointerout', () => {
-      backButton.setStyle({ backgroundColor: '#4a4a4a' });
-    });
-    backButton.on('pointerdown', () => {
-      this.scene.start('menu');
+    new Button({
+      scene: this,
+      x: 80,
+      y: GAME_HEIGHT - 50,
+      label: 'Back',
+      tier: 'secondary',
+      width: 100,
+      height: 44,
+      onClick: () => {
+        TransitionManager.transition(this, 'menu', undefined, 'slideLeft');
+      },
     });
   }
 

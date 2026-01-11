@@ -5,6 +5,8 @@ import { GameState } from '../managers/GameState';
 import { MUSIC_KEYS } from '../data/audio';
 import { LoadoutGrid } from '../ui/LoadoutGrid';
 import { getUnlockedUnits } from '../data/units';
+import { Button } from '../ui/Button';
+import { TransitionManager } from '../systems/TransitionManager';
 
 const MAX_LOADOUT_SIZE = 5;
 
@@ -18,7 +20,7 @@ interface LoadoutSceneData {
  */
 export class LoadoutScene extends Phaser.Scene {
   private stageId = 1;
-  private battleButton!: Phaser.GameObjects.Text;
+  private battleButton!: Button;
   private selectedLoadout: string[] = [];
 
   constructor() {
@@ -30,16 +32,33 @@ export class LoadoutScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Reset camera and fade in
+    TransitionManager.resetCamera(this);
+    TransitionManager.fadeIn(this);
+
+    // Add background with parallax
+    const bg = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'bg_loadout');
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      const offsetX = (pointer.x - GAME_WIDTH / 2) * 0.008;
+      const offsetY = (pointer.y - GAME_HEIGHT / 2) * 0.008;
+      bg.setPosition(GAME_WIDTH / 2 + offsetX, GAME_HEIGHT / 2 + offsetY);
+    });
+
     const audio = AudioManager.getInstance(this);
     audio?.switchMusic(MUSIC_KEYS.menu);
 
-    // Title with stage info
-    const title = this.add.text(GAME_WIDTH / 2, 30, `Stage ${this.stageId} - Select Units`, {
+    // Title with shadow
+    this.add.text(GAME_WIDTH / 2 + 2, 32, `Stage ${this.stageId} - Select Units`, {
+      fontSize: '36px',
+      color: '#000000',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setAlpha(0.3);
+
+    this.add.text(GAME_WIDTH / 2, 30, `Stage ${this.stageId} - Select Units`, {
       fontSize: '36px',
       color: '#ffffff',
       fontStyle: 'bold',
-    });
-    title.setOrigin(0.5);
+    }).setOrigin(0.5);
 
     // Get unlocked units from game state
     const gameState = GameState.getInstance(this);
@@ -58,75 +77,48 @@ export class LoadoutScene extends Phaser.Scene {
       },
     });
 
-    // Battle button
-    this.battleButton = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 60, 'Start Battle', {
-      fontSize: '32px',
-      color: '#888888',
-      backgroundColor: '#333333',
-      padding: { x: 30, y: 15 },
+    // Battle button using Button component
+    this.battleButton = new Button({
+      scene: this,
+      x: GAME_WIDTH / 2,
+      y: GAME_HEIGHT - 60,
+      label: 'Start Battle',
+      tier: 'primary',
+      width: 180,
+      height: 56,
+      fontSize: '28px',
+      disabled: true,
+      onClick: () => this.startBattle(),
     });
-    this.battleButton.setOrigin(0.5);
-    this.setupBattleButton();
 
     // Back button
-    const backButton = this.add.text(50, GAME_HEIGHT - 60, 'Back', {
-      fontSize: '24px',
-      color: '#ffffff',
-      backgroundColor: '#4a4a4a',
-      padding: { x: 20, y: 10 },
-    });
-    backButton.setOrigin(0, 0.5);
-    backButton.setInteractive({ useHandCursor: true });
-
-    backButton.on('pointerover', () => {
-      backButton.setStyle({ backgroundColor: '#6a6a6a' });
-    });
-    backButton.on('pointerout', () => {
-      backButton.setStyle({ backgroundColor: '#4a4a4a' });
-    });
-    backButton.on('pointerdown', () => {
-      this.scene.start('levelSelect');
-    });
-  }
-
-  private setupBattleButton(): void {
-    this.battleButton.setInteractive({ useHandCursor: true });
-
-    this.battleButton.on('pointerover', () => {
-      if (this.selectedLoadout.length > 0) {
-        this.battleButton.setStyle({ backgroundColor: '#4a6a4a' });
-      }
-    });
-
-    this.battleButton.on('pointerout', () => {
-      this.updateBattleButton();
-    });
-
-    this.battleButton.on('pointerdown', () => {
-      if (this.selectedLoadout.length > 0) {
-        this.startBattle();
-      }
+    new Button({
+      scene: this,
+      x: 80,
+      y: GAME_HEIGHT - 60,
+      label: 'Back',
+      tier: 'secondary',
+      width: 100,
+      height: 44,
+      onClick: () => {
+        TransitionManager.transition(this, 'levelSelect', undefined, 'slideLeft');
+      },
     });
   }
 
   private updateBattleButton(): void {
-    if (this.selectedLoadout.length > 0) {
-      this.battleButton.setStyle({
-        color: '#ffffff',
-        backgroundColor: '#3a5a3a',
-      });
-    } else {
-      this.battleButton.setStyle({
-        color: '#888888',
-        backgroundColor: '#333333',
-      });
-    }
+    this.battleButton.setDisabled(this.selectedLoadout.length === 0);
   }
 
   private startBattle(): void {
-    this.scene.start('battle', {
-      stageId: this.stageId,
-      loadout: this.selectedLoadout,
-    });
+    if (this.selectedLoadout.length === 0) return;
+
+    // Use zoom transition for dramatic battle entry
+    TransitionManager.transition(
+      this,
+      'battle',
+      { stageId: this.stageId, loadout: this.selectedLoadout },
+      'zoom'
+    );
   }
 }
