@@ -91,10 +91,11 @@ export class LoadoutGrid extends Phaser.GameObjects.Container {
     bg.setStrokeStyle(2, 0x6a6a7a);
     container.add(bg);
 
-    // Unit icon placeholder (colored circle based on unit type)
-    const iconColor = this.getUnitColor(unit.id);
-    const icon = this.scene.add.circle(CARD_WIDTH / 2, 40, 25, iconColor);
-    container.add(icon);
+    // Unit sprite (show first frame of idle animation)
+    const textureKey = `unit_${unit.id}`;
+    const sprite = this.scene.add.sprite(CARD_WIDTH / 2, 40, textureKey, 0);
+    sprite.setScale(0.8); // Scale down to fit card
+    container.add(sprite);
 
     // Unit name
     const name = this.scene.add.text(CARD_WIDTH / 2, 80, unit.name, {
@@ -222,13 +223,14 @@ export class LoadoutGrid extends Phaser.GameObjects.Container {
         const unitId = this.selectedLoadout[i];
         const unit = this.availableUnits.find((u) => u.id === unitId);
         if (unit) {
-          // Unit icon
-          const iconColor = this.getUnitColor(unitId);
-          const icon = this.scene.add.circle(SLOT_SIZE / 2, 30, 20, iconColor);
-          container.add(icon);
+          // Unit sprite (show first frame)
+          const textureKey = `unit_${unitId}`;
+          const sprite = this.scene.add.sprite(SLOT_SIZE / 2, 30, textureKey, 0);
+          sprite.setScale(0.6); // Scale down to fit slot
+          container.add(sprite);
 
           // Unit name
-          const name = this.scene.add.text(SLOT_SIZE / 2, 60, unit.name, {
+          const name = this.scene.add.text(SLOT_SIZE / 2, 65, unit.name, {
             fontSize: '10px',
             color: '#ffffff',
           });
@@ -253,22 +255,6 @@ export class LoadoutGrid extends Phaser.GameObjects.Container {
       bg.setFillStyle(0x3a3a4a);
       bg.setStrokeStyle(2, 0x6a6a7a);
     }
-  }
-
-  private getUnitColor(unitId: string): number {
-    const colors: Record<string, number> = {
-      swordsman: 0x4a90d9,
-      archer: 0x90d94a,
-      knight: 0x7a7a9a,
-      mage: 0x9a4ad9,
-      healer: 0x4ad99a,
-      assassin: 0x2a2a4a,
-      catapult: 0x9a6a4a,
-      griffin: 0xd9d94a,
-      paladin: 0xffd700,
-      dragon: 0xd94a4a,
-    };
-    return colors[unitId] ?? 0x6a6a6a;
   }
 
   getSelectedLoadout(): string[] {

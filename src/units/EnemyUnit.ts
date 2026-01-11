@@ -41,7 +41,10 @@ export class EnemyUnit extends Unit {
     return this.enemyDefinition.goldDrop;
   }
 
-  protected override onStateChange(_oldState: UnitState, newState: UnitState): void {
+  protected override onStateChange(oldState: UnitState, newState: UnitState): void {
+    // Call parent to handle animation changes
+    super.onStateChange(oldState, newState);
+
     if (newState === UnitState.Dying) {
       this.scene.events.emit('gold-earned', { amount: this.enemyDefinition.goldDrop });
       this.scene.events.emit('enemy-killed');

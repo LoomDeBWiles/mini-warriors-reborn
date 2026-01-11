@@ -6,6 +6,7 @@ export enum UnitState {
   Attacking = 'attacking',
   Holding = 'holding',
   Healing = 'healing',
+  Supporting = 'supporting', // Healers wait behind front line
   Dying = 'dying',
 }
 
@@ -79,9 +80,14 @@ export class StateMachine {
 
     const { distanceToEnemy, attackRange, isTank, isHealer, distanceToDamagedAlly } = context;
 
-    // Healers prioritize healing damaged allies over attacking
-    if (isHealer && distanceToDamagedAlly !== null && distanceToDamagedAlly <= attackRange) {
-      return UnitState.Healing;
+    // Healers move with the group like archers, stopping only to heal damaged allies
+    if (isHealer) {
+      // Heal damaged allies in range
+      if (distanceToDamagedAlly !== null && distanceToDamagedAlly <= attackRange) {
+        return UnitState.Healing;
+      }
+      // Otherwise keep moving forward with the group
+      return UnitState.Moving;
     }
 
     if (distanceToEnemy === null) {
@@ -93,9 +99,7 @@ export class StateMachine {
 
     if (distanceToEnemy <= effectiveRange) {
       // Tank units enter holding state to block enemies
-      // Healers don't attack enemies (damage = 0), so continue moving
       if (isTank) return UnitState.Holding;
-      if (isHealer) return UnitState.Moving;
       return UnitState.Attacking;
     }
 

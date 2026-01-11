@@ -42,6 +42,7 @@ export interface GameStateData {
   unlockedAbilities: string[];
   settings: GameSettings;
   stats: PlayerStats;
+  goldMines: number;
 }
 
 export function createDefaultState(): GameStateData {
@@ -69,6 +70,7 @@ export function createDefaultState(): GameStateData {
       totalEnemiesKilled: 0,
       totalPlayTime: 0,
     },
+    goldMines: 0,
   };
 }
 
@@ -107,6 +109,7 @@ export function mergeWithDefaults(saved: Partial<GameStateData>): GameStateData 
       ...defaults.stats,
       ...saved.stats,
     },
+    goldMines: saved.goldMines ?? defaults.goldMines,
   };
 }
 
@@ -280,5 +283,19 @@ export class GameState {
    */
   recordBattle(): void {
     this.data.stats.totalBattles += 1;
+  }
+
+  get goldMines(): number {
+    return this.data.goldMines;
+  }
+
+  addGoldMine(): boolean {
+    if (this.data.goldMines >= 10) return false;
+    this.data.goldMines += 1;
+    return true;
+  }
+
+  resetGoldMines(): void {
+    this.data.goldMines = 0;
   }
 }

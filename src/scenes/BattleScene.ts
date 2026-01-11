@@ -9,6 +9,8 @@ import { WaveManager } from '../systems/WaveManager';
 import { EnemyUnit } from '../units/EnemyUnit';
 import { PlayerUnit, createPlayerUnit } from '../units/PlayerUnit';
 import { Base } from '../entities/Base';
+import { GoldMine, MINE_COST, MAX_MINES } from '../entities/GoldMine';
+import { Projectile } from '../systems/Projectile';
 import { Unit, UnitState } from '../units/Unit';
 import { getStage } from '../data/stages';
 import { GameState } from '../managers/GameState';
@@ -50,6 +52,8 @@ export class BattleScene extends Phaser.Scene {
   private playerUnits!: Phaser.GameObjects.Group;
   private enemyUnits!: Phaser.GameObjects.Group;
   private economyManager!: EconomyManager;
+  private goldMines: GoldMine[] = [];
+  private buyMineButton!: Phaser.GameObjects.Container;
 
   constructor() {
     super({ key: 'battle' });
@@ -65,9 +69,15 @@ export class BattleScene extends Phaser.Scene {
     this.gold = INITIAL_GOLD;
     this.killGold = 0;
     this.battleStartTime = 0;
+    this.goldMines = [];
   }
 
   create(): void {
+    // Add background based on stage world
+    const stage = getStage(this.stageId);
+    const bgKey = `bg_battle_${stage.world}`;
+    this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, bgKey);
+
     // Start battle music
     const audio = AudioManager.getInstance(this);
     audio?.switchMusic(MUSIC_KEYS.battle_easy);
@@ -101,7 +111,6 @@ export class BattleScene extends Phaser.Scene {
     this.enemyUnits = this.add.group();
 
     // Create wave manager with waves from stage definition
-    const stage = getStage(this.stageId);
     this.waveManager = new WaveManager(
       this,
       stage.waves,
@@ -177,6 +186,10 @@ export class BattleScene extends Phaser.Scene {
 
     // Setup keyboard input for spawning (keys 1-5)
     this.setupSpawnKeyboardInput();
+
+    // Create gold mines from persistent state
+    this.createGoldMines();
+    this.createBuyMineButton();
   }
 
   private setupSpawnKeyboardInput(): void {
@@ -264,7 +277,17 @@ export class BattleScene extends Phaser.Scene {
         // Attack the base if in range and cooldown ready
         unit.tickAttackCooldown(deltaMs);
         if (unit.canAttack() && distanceToEnemy !== null && distanceToEnemy <= unit.definition.range + 50) {
-          this.damageEnemyBase(unit.definition.damage);
+          if (unit.definition.range > 0) {
+            // Ranged unit: fire projectile at enemy base
+            new Projectile({
+              scene: this,
+              attacker: unit,
+              target: this.enemyBase,
+            });
+          } else {
+            // Melee unit: direct damage
+            this.damageEnemyBase(unit.definition.damage);
+          }
           unit.consumeAttackCooldown();
         }
       } else {
@@ -312,7 +335,17 @@ export class BattleScene extends Phaser.Scene {
         // Attack the base if in range and cooldown ready
         enemy.tickAttackCooldown(deltaMs);
         if (enemy.canAttack() && distanceToPlayer !== null && distanceToPlayer <= enemy.definition.range + 50) {
-          this.damagePlayerBase(enemy.definition.damage);
+          if (enemy.definition.range > 0) {
+            // Ranged enemy: fire projectile at player base
+            new Projectile({
+              scene: this,
+              attacker: enemy,
+              target: this.playerBase,
+            });
+          } else {
+            // Melee enemy: direct damage
+            this.damagePlayerBase(enemy.definition.damage);
+          }
           enemy.consumeAttackCooldown();
         }
       } else {
@@ -559,6 +592,9 @@ export class BattleScene extends Phaser.Scene {
         if (canUnlock && rewards.unitUnlock) {
           gameState.unlockUnit(rewards.unitUnlock);
         }
+      } else {
+        // Defeat: reset gold mines
+        gameState.resetGoldMines();
       }
 
       gameState.save();
@@ -591,5 +627,107 @@ export class BattleScene extends Phaser.Scene {
     this.physics.resume();
     this.tweens.resumeAll();
     AudioManager.getInstance(this)?.resume();
+  }
+
+  private createGoldMines(): void {
+    const gameState = GameState.getInstance(this);
+    const mineCount = gameState?.goldMines ?? 0;
+    for (let i = 0; i < mineCount; i++) {
+      this.spawnGoldMine(i);
+    }
+  }
+
+  private spawnGoldMine(index: number): void {
+    // Position mines on the ground to the right of the castle
+    // Row of 5, then stack above
+    const col = index % 5;
+    const row = Math.floor(index / 5);
+    const x = PLAYER_BASE_X + 50 + col * 35;
+    const y = 545 - row * 25;
+    const mine = new GoldMine({
+      scene: this,
+      x,
+      y,
+      index,
+      onTap: (gold) => this.handleMineTap(gold),
+    });
+    mine.setDepth(50);
+    this.goldMines.push(mine);
+  }
+
+  private handleMineTap(gold: number): void {
+    this.gold += gold;
+    this.hud.updateGold(this.gold);
+    this.spawnBar.updateGold(this.gold);
+    AudioManager.getInstance(this)?.playSfx(SFX_KEYS.purchase_success.key);
+  }
+
+  private createBuyMineButton(): void {
+    const gameState = GameState.getInstance(this);
+    const mineCount = gameState?.goldMines ?? 0;
+
+    const x = 55;
+    const y = 120;
+    const container = this.add.container(x, y);
+
+    const bg = this.add.rectangle(0, 0, 80, 32, 0x3a3a4a);
+    bg.setStrokeStyle(2, 0x6a6a7a);
+    container.add(bg);
+
+    const text = this.add.text(0, 0, `Mine ${MINE_COST}g`, {
+      fontSize: '12px',
+      color: '#ffd700',
+    });
+    text.setOrigin(0.5);
+    container.add(text);
+
+    bg.setInteractive({ useHandCursor: true });
+    bg.on('pointerdown', () => this.buyGoldMine());
+    bg.on('pointerover', () => {
+      if (this.canBuyMine()) bg.setFillStyle(0x4a4a5a);
+    });
+    bg.on('pointerout', () => bg.setFillStyle(0x3a3a4a));
+
+    container.setDepth(1000);
+    this.buyMineButton = container;
+
+    if (mineCount >= MAX_MINES) {
+      this.disableBuyMineButton();
+    }
+  }
+
+  private canBuyMine(): boolean {
+    const gameState = GameState.getInstance(this);
+    const mineCount = gameState?.goldMines ?? 0;
+    return this.gold >= MINE_COST && mineCount < MAX_MINES;
+  }
+
+  private buyGoldMine(): void {
+    if (!this.canBuyMine()) return;
+
+    const gameState = GameState.getInstance(this);
+    if (!gameState) return;
+
+    if (!this.spendGold(MINE_COST)) return;
+
+    const currentMines = gameState.goldMines;
+    gameState.addGoldMine();
+    gameState.save();
+
+    this.spawnGoldMine(currentMines);
+    AudioManager.getInstance(this)?.playSfx(SFX_KEYS.purchase_success.key);
+
+    if (gameState.goldMines >= MAX_MINES) {
+      this.disableBuyMineButton();
+    }
+  }
+
+  private disableBuyMineButton(): void {
+    const bg = this.buyMineButton.getAt(0) as Phaser.GameObjects.Rectangle;
+    const text = this.buyMineButton.getAt(1) as Phaser.GameObjects.Text;
+    bg.setFillStyle(0x2a2a2a);
+    bg.removeInteractive();
+    text.setColor('#666666');
+    text.setText('MAX');
   }
 }

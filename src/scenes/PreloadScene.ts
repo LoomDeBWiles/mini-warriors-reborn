@@ -2,6 +2,13 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
 import { AudioManager } from '../managers/AudioManager';
 import { GameState } from '../managers/GameState';
+import {
+  UNIT_ANIMATIONS,
+  ENEMY_ANIMATIONS,
+  ANIMATION_FRAME_RATE,
+  AnimationConfig,
+  getEnemySpriteFile,
+} from '../data/animations';
 
 const SETTINGS_STORAGE_KEY = 'miniWarriorsSettings';
 
@@ -19,20 +26,19 @@ const PLAYER_UNITS = [
   'dragon',
 ] as const;
 
-// Enemy sprite IDs
+// Enemy IDs (matching ENEMY_DEFINITIONS, not sprite filenames)
 const ENEMIES = [
   'goblin',
-  'warrior',
-  'slinger',
-  'brute',
-  'speedy',
-  'rider',
-  'archer_enemy',
-  'wizard',
-  'giant',
+  'wolf',
+  'bandit',
+  'orc',
+  'slime',
+  'troll',
   'harpy',
-  'dinosaur',
-  'dragon_rider',
+  'golem',
+  'giant',
+  'dragon_boss',
+  'demon_lord',
 ] as const;
 
 // Background IDs
@@ -144,14 +150,33 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   private loadSprites(): void {
-    // Player unit sprites
+    // Player unit spritesheets
     for (const unit of PLAYER_UNITS) {
-      this.load.image(`unit_${unit}`, `assets/sprites/units/${unit}.png`);
+      const config = UNIT_ANIMATIONS[unit];
+      if (config) {
+        this.load.spritesheet(`unit_${unit}`, `assets/sprites/units/${unit}.png`, {
+          frameWidth: config.frameWidth,
+          frameHeight: config.frameHeight,
+        });
+      } else {
+        // Fallback to image if no animation config
+        this.load.image(`unit_${unit}`, `assets/sprites/units/${unit}.png`);
+      }
     }
 
-    // Enemy sprites
+    // Enemy spritesheets (use sprite mapping for filenames)
     for (const enemy of ENEMIES) {
-      this.load.image(`enemy_${enemy}`, `assets/sprites/enemies/${enemy}.png`);
+      const spriteFile = getEnemySpriteFile(enemy);
+      const config = ENEMY_ANIMATIONS[spriteFile];
+      if (config) {
+        this.load.spritesheet(`enemy_${enemy}`, `assets/sprites/enemies/${spriteFile}.png`, {
+          frameWidth: config.frameWidth,
+          frameHeight: config.frameHeight,
+        });
+      } else {
+        // Fallback to image if no animation config
+        this.load.image(`enemy_${enemy}`, `assets/sprites/enemies/${spriteFile}.png`);
+      }
     }
   }
 
@@ -165,6 +190,10 @@ export class PreloadScene extends Phaser.Scene {
     for (const ui of UI_TEXTURES) {
       this.load.image(`ui_${ui}`, `assets/ui/${ui}.png`);
     }
+
+    // Castle sprites
+    this.load.image('castle_player', 'assets/sprites/castle_player.png');
+    this.load.image('castle_enemy', 'assets/sprites/castle_enemy.png');
   }
 
   private loadAudio(): void {
@@ -184,6 +213,9 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Create animations for all sprites
+    this.createAnimations();
+
     // Load saved settings from localStorage
     const savedSettings = this.loadSettings();
     const musicVolume = savedSettings.musicVolume ?? 1.0;
@@ -195,6 +227,47 @@ export class PreloadScene extends Phaser.Scene {
     GameState.init(this);
 
     this.scene.start('menu');
+  }
+
+  private createAnimations(): void {
+    // Create player unit animations
+    for (const unit of PLAYER_UNITS) {
+      const config = UNIT_ANIMATIONS[unit];
+      if (config) {
+        this.createAnimationsForSprite(`unit_${unit}`, config);
+      }
+    }
+
+    // Create enemy animations (use sprite mapping for config lookup)
+    for (const enemy of ENEMIES) {
+      const spriteFile = getEnemySpriteFile(enemy);
+      const config = ENEMY_ANIMATIONS[spriteFile];
+      if (config) {
+        this.createAnimationsForSprite(`enemy_${enemy}`, config);
+      }
+    }
+  }
+
+  private createAnimationsForSprite(key: string, config: AnimationConfig): void {
+    const states = ['idle', 'walk', 'attack', 'death'] as const;
+
+    for (const state of states) {
+      const [startFrame, frameCount] = config.states[state];
+      const animKey = `${key}_${state}`;
+
+      // Skip if animation already exists
+      if (this.anims.exists(animKey)) continue;
+
+      this.anims.create({
+        key: animKey,
+        frames: this.anims.generateFrameNumbers(key, {
+          start: startFrame,
+          end: startFrame + frameCount - 1,
+        }),
+        frameRate: ANIMATION_FRAME_RATE[state],
+        repeat: state === 'death' ? 0 : -1, // Death plays once, others loop
+      });
+    }
   }
 
   private loadSettings(): { musicVolume?: number } {

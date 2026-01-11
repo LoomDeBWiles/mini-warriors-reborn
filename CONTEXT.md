@@ -44,9 +44,15 @@ Game assets are AI-generated via MCP servers configured in `.mcp.json`.
 | Server | Purpose | Port/URL |
 |--------|---------|----------|
 | pixellab | Pixel art sprites/spritesheets | `https://api.pixellab.ai/mcp` |
-| suno-mcp | Music tracks | Local Python server |
 
-**Config:** `.mcp.json` (gitignored - contains API key)
+**Config:** `.mcp.json` (gitignored - contains API keys)
+
+### API Keys (in .env)
+
+| Service | Env Var | Purpose |
+|---------|---------|---------|
+| PixelLab | `PIXELLAB_API_KEY` | Sprite generation MCP |
+| AI/ML API | `AIMLAPI_KEY` | Music generation (MiniMax, Lyria 2, etc.) |
 
 ### Generating Sprites
 
@@ -64,14 +70,26 @@ game-ready export, retro SNES style
 
 ### Generating Music
 
-Use Suno MCP workflow:
+Use AI/ML API (aimlapi.com) with MiniMax Music or Lyria 2 models.
+
+**Endpoint:** `https://api.aimlapi.com/v2/generate/audio`
+
+**Example curl:**
+```bash
+curl -X POST 'https://api.aimlapi.com/v2/generate/audio' \
+  -H "Authorization: Bearer $AIMLAPI_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "minimax-music",
+    "prompt": "8-bit chiptune battle theme, fast tempo, heroic, retro game"
+  }'
 ```
-1. suno_open_browser({headless: true})
-2. suno_login({email: "...", password: "..."})
-3. suno_generate_track({prompt: "...", style: "orchestral", duration: "3:00"})
-4. suno_download_track({track_id: "...", download_path: "./public/assets/audio/music"})
-5. suno_close_browser()
-```
+
+**Free tier:** 10 requests/hour (no credit card required)
+
+**Output:** Download to `public/assets/audio/music/`
+
+**Required tracks:** menu, battle_easy, battle_hard, boss, upgrade, victory, defeat
 
 ### Generating SFX
 

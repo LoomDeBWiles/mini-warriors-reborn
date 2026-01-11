@@ -81,10 +81,8 @@ export class Button extends Phaser.GameObjects.Container {
     // Add to scene
     this.scene.add.existing(this);
 
-    // Setup interactivity
-    if (!this.isDisabled) {
-      this.setupInteractivity();
-    }
+    // Always setup event handlers (they check isDisabled internally)
+    this.setupInteractivity();
   }
 
   private getColorsForTier(tier: ButtonTier): { bg: number; border: number; text: string } {
@@ -111,10 +109,12 @@ export class Button extends Phaser.GameObjects.Container {
   }
 
   private setupInteractivity(): void {
-    // Make the background the hit area
-    this.background.setInteractive({ useHandCursor: true });
+    // Make the background the hit area (only if not disabled)
+    if (!this.isDisabled) {
+      this.background.setInteractive({ useHandCursor: true });
+    }
 
-    // Hover effects
+    // Hover effects - handlers check isDisabled internally
     this.background.on('pointerover', () => this.onHover());
     this.background.on('pointerout', () => this.onHoverEnd());
     this.background.on('pointerdown', () => this.onPress());

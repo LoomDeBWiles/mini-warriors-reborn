@@ -16,6 +16,16 @@ interface UnitConfig {
   textureKey: string;
 }
 
+/** Maps UnitState to animation state name */
+const STATE_TO_ANIM: Record<UnitState, string> = {
+  [UnitState.Moving]: 'walk',
+  [UnitState.Attacking]: 'attack',
+  [UnitState.Holding]: 'idle',
+  [UnitState.Healing]: 'idle',
+  [UnitState.Supporting]: 'idle',
+  [UnitState.Dying]: 'death',
+};
+
 /** Amplitude of flying unit bob in pixels */
 const FLY_BOB_AMPLITUDE = 8;
 /** Speed of flying unit bob (radians per second) */
@@ -33,6 +43,8 @@ export class Unit extends Phaser.GameObjects.Container {
   private healthBar: HealthBar;
   private sprite: Phaser.GameObjects.Sprite;
   protected stateMachine: StateMachine;
+  /** Texture key for animation lookups */
+  private textureKey: string;
   /** Accumulated time for flying bob animation (in seconds) */
   private flyTime = 0;
   /** Current y offset from flying bob */
@@ -49,6 +61,7 @@ export class Unit extends Phaser.GameObjects.Container {
   constructor(config: UnitConfig) {
     super(config.scene, config.x, config.y);
     this.definition = config.definition;
+    this.textureKey = config.textureKey;
 
     this.sprite = this.scene.add.sprite(0, 0, config.textureKey);
     this.add(this.sprite);
@@ -63,15 +76,30 @@ export class Unit extends Phaser.GameObjects.Container {
       this.onStateChange(oldState, newState);
     });
 
+    // Play initial animation (walk for Moving state)
+    this.playAnimation('walk');
+
     this.scene.add.existing(this);
   }
 
   /**
    * Called when state machine transitions to a new state.
-   * Override in subclasses for state-specific behavior.
+   * Plays appropriate animation based on new state.
    */
-  protected onStateChange(_oldState: UnitState, _newState: UnitState): void {
-    // Base implementation does nothing - subclasses override
+  protected onStateChange(_oldState: UnitState, newState: UnitState): void {
+    const animState = STATE_TO_ANIM[newState];
+    this.playAnimation(animState);
+  }
+
+  /**
+   * Play a specific animation state (idle, walk, attack, death).
+   */
+  private playAnimation(state: string): void {
+    const animKey = `${this.textureKey}_${state}`;
+    // Only play if the animation exists
+    if (this.scene.anims.exists(animKey)) {
+      this.sprite.play(animKey, true);
+    }
   }
 
   /**
@@ -88,7 +116,10 @@ export class Unit extends Phaser.GameObjects.Container {
    * Call every frame with distance to nearest enemy and damaged ally.
    * Does nothing when unit is inactive (paused).
    */
-  updateStateMachine(distanceToEnemy: number | null, distanceToDamagedAlly: number | null = null): void {
+  updateStateMachine(
+    distanceToEnemy: number | null,
+    distanceToDamagedAlly: number | null = null
+  ): void {
     if (!this.active) return;
 
     const context: TransitionContext = {
@@ -251,8 +282,11 @@ export class Unit extends Phaser.GameObjects.Container {
 
   /**
    * Play death animation and destroy unit when complete.
+   * Combines sprite death animation with fade/scale tween.
    */
   private playDeathAnimation(): void {
+    // State change already triggers death animation via onStateChange
+    // Add fade/scale tween on top
     this.scene.tweens.add({
       targets: this,
       alpha: 0,
