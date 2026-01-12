@@ -144,7 +144,7 @@ export const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
     id: 'dragon',
     name: 'Dragon',
     unlockStage: 20,
-    spawnCost: 100,
+    spawnCost: 200,
     cooldownMs: 12000,
     hp: 300,
     damage: 50,

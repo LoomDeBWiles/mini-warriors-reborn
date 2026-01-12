@@ -39,6 +39,7 @@ const ENEMIES = [
   'giant',
   'dragon_boss',
   'demon_lord',
+  'flying_dragon',
 ] as const;
 
 // Background IDs

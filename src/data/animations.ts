@@ -133,6 +133,25 @@ const STANDARD_24_FRAME: AnimationConfig = {
   },
 };
 
+/**
+ * Demon Lord layout (23 frames):
+ * - Idle: frames 0-3 (4 frames)
+ * - Walk: frames 4-9 (6 frames)
+ * - Attack: frames 10-15 (6 frames)
+ * - Death: frames 16-22 (7 frames)
+ */
+const DEMON_LORD_FRAME: AnimationConfig = {
+  width: 1472,
+  frameWidth: 64,
+  frameHeight: 64,
+  states: {
+    idle: [0, 4],
+    walk: [4, 6],
+    attack: [10, 6],
+    death: [16, 7],
+  },
+};
+
 /** Animation configs for player units */
 export const UNIT_ANIMATIONS: Record<string, AnimationConfig> = {
   swordsman: STANDARD_20_FRAME,
@@ -161,6 +180,7 @@ export const ENEMY_ANIMATIONS: Record<string, AnimationConfig> = {
   harpy: STANDARD_23_FRAME,
   dinosaur: STANDARD_16_FRAME,
   dragon_rider: STANDARD_23_FRAME,
+  demon_lord: DEMON_LORD_FRAME,
 };
 
 /** Animation frame rates */
@@ -180,6 +200,7 @@ export const ENEMY_SPRITE_MAP: Record<string, string> = {
   goblin: 'goblin',
   harpy: 'harpy',
   giant: 'giant',
+  flying_dragon: 'flying_dragon',
   // Mapped sprites (enemy ID → different sprite file)
   wolf: 'speedy',
   bandit: 'warrior',
@@ -188,7 +209,7 @@ export const ENEMY_SPRITE_MAP: Record<string, string> = {
   troll: 'wizard',
   golem: 'rider',
   dragon_boss: 'dinosaur',
-  demon_lord: 'dragon_rider',
+  demon_lord: 'demon_lord',
 };
 
 /**

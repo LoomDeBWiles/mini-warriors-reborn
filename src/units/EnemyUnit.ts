@@ -31,6 +31,7 @@ export class EnemyUnit extends Unit {
         damage: config.definition.damage,
         range: config.definition.range,
         speed: config.definition.speed,
+        isFlying: config.definition.isFlying,
       },
       textureKey: `enemy_${config.definition.id}`,
     });

@@ -8,4 +8,10 @@ export function createGame(): Phaser.Game {
 // Initialize game when DOM is ready
 window.addEventListener('load', () => {
   createGame();
+
+  // Prevent iOS Safari fullscreen keyboard warning
+  const canvas = document.querySelector('#game-container canvas');
+  if (canvas) {
+    canvas.setAttribute('inputmode', 'none');
+  }
 });

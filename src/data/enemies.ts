@@ -15,6 +15,8 @@ export interface EnemyDefinition {
   speed: number;
   /** Gold awarded when killed */
   goldDrop: number;
+  /** Flying enemies can only be targeted by turrets and flying units */
+  isFlying?: boolean;
 }
 
 /**
@@ -140,5 +142,15 @@ export const ENEMY_DEFINITIONS: Record<string, EnemyDefinition> = {
     range: 0,
     speed: 30,
     goldDrop: 200,
+  },
+  flying_dragon: {
+    id: 'flying_dragon',
+    name: 'Dragon',
+    hp: 150,
+    damage: 30,
+    range: 0,
+    speed: 70,
+    goldDrop: 50,
+    isFlying: true,
   },
 };

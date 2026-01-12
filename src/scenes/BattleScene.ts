@@ -6,10 +6,14 @@ import { UNIT_DEFINITIONS } from '../data/units';
 import { HUD } from '../ui/HUD';
 import { SpawnBar } from '../ui/SpawnBar';
 import { WaveManager } from '../systems/WaveManager';
+import { DragonSpawner } from '../systems/DragonSpawner';
 import { EnemyUnit } from '../units/EnemyUnit';
 import { PlayerUnit, createPlayerUnit } from '../units/PlayerUnit';
 import { Base } from '../entities/Base';
 import { GoldMine, MINE_COST, MAX_MINES } from '../entities/GoldMine';
+import { Turret } from '../entities/Turret';
+import { EnemyTurret } from '../entities/EnemyTurret';
+import { TURRET_PURCHASE_COST, TURRET_UPGRADE_COST, MAX_TURRETS } from '../data/turrets';
 import { Projectile } from '../systems/Projectile';
 import { Unit, UnitState } from '../units/Unit';
 import { getStage } from '../data/stages';
@@ -54,6 +58,10 @@ export class BattleScene extends Phaser.Scene {
   private economyManager!: EconomyManager;
   private goldMines: GoldMine[] = [];
   private buyMineButton!: Phaser.GameObjects.Container;
+  private turrets: Turret[] = [];
+  private buyTurretButton!: Phaser.GameObjects.Container;
+  private enemyTurrets: EnemyTurret[] = [];
+  private dragonSpawner?: DragonSpawner;
 
   constructor() {
     super({ key: 'battle' });
@@ -70,6 +78,8 @@ export class BattleScene extends Phaser.Scene {
     this.killGold = 0;
     this.battleStartTime = 0;
     this.goldMines = [];
+    this.turrets = [];
+    this.enemyTurrets = [];
   }
 
   create(): void {
@@ -190,6 +200,29 @@ export class BattleScene extends Phaser.Scene {
     // Create gold mines from persistent state
     this.createGoldMines();
     this.createBuyMineButton();
+
+    // Create turret buy button
+    this.createBuyTurretButton();
+
+    // Spawn enemy turrets on final level (stage 20)
+    if (this.stageId === 20) {
+      this.spawnEnemyTurrets();
+    }
+
+    // Spawn flying dragons starting at stage 10
+    if (this.stageId >= 10) {
+      const dragonCount = Math.min(10, this.stageId - 9);
+      this.dragonSpawner = new DragonSpawner({
+        scene: this,
+        spawnX: ENEMY_SPAWN_X,
+        spawnY: GAME_HEIGHT / 2 - 80, // Fly above ground units
+        dragonCount,
+        spawnInterval: 15000, // 15 seconds between dragons
+        onDragonSpawn: (dragon) => this.handleEnemySpawn(dragon),
+        hpMultiplier: stage.enemyHPMultiplier,
+        damageMultiplier: stage.enemyDamageMultiplier,
+      });
+    }
   }
 
   private setupSpawnKeyboardInput(): void {
@@ -211,7 +244,10 @@ export class BattleScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     this.spawnBar.update();
     this.waveManager.update();
+    this.dragonSpawner?.update();
     this.updateUnitAI(delta);
+    this.updateTurrets(delta);
+    this.updateEnemyTurrets(delta);
     this.economyManager.updatePassiveIncome(delta / 1000);
   }
 
@@ -379,6 +415,7 @@ export class BattleScene extends Phaser.Scene {
 
   /**
    * Find nearest unit from a list of targets.
+   * Flying enemies can only be targeted by flying units.
    */
   private findNearestUnit(source: Unit, targets: Unit[]): Unit | null {
     let nearest: Unit | null = null;
@@ -386,6 +423,11 @@ export class BattleScene extends Phaser.Scene {
 
     for (const target of targets) {
       if (!target.active || target.getState() === UnitState.Dying) continue;
+
+      // Flying enemies can only be targeted by flying units
+      if (target.isFlying() && !source.isFlying()) {
+        continue;
+      }
 
       const dist = Phaser.Math.Distance.Between(source.x, source.y, target.x, target.y);
       if (dist < nearestDist) {
@@ -729,5 +771,127 @@ export class BattleScene extends Phaser.Scene {
     bg.removeInteractive();
     text.setColor('#666666');
     text.setText('MAX');
+  }
+
+  // =========================================
+  // Turret Management
+  // =========================================
+
+  private updateTurrets(deltaMs: number): void {
+    const enemies = this.enemyUnits.getChildren() as EnemyUnit[];
+    for (const turret of this.turrets) {
+      turret.updateTurret(deltaMs, enemies);
+    }
+  }
+
+  private createBuyTurretButton(): void {
+    const x = 55;
+    const y = 160; // Below mine button
+    const container = this.add.container(x, y);
+
+    const bg = this.add.rectangle(0, 0, 80, 32, 0x3a3a4a);
+    bg.setStrokeStyle(2, 0x6a6a7a);
+    container.add(bg);
+
+    const text = this.add.text(0, 0, `Turret ${TURRET_PURCHASE_COST}g`, {
+      fontSize: '12px',
+      color: '#ffd700',
+    });
+    text.setOrigin(0.5);
+    container.add(text);
+
+    bg.setInteractive({ useHandCursor: true });
+    bg.on('pointerdown', () => this.buyTurret());
+    bg.on('pointerover', () => {
+      if (this.canBuyTurret()) bg.setFillStyle(0x4a4a5a);
+    });
+    bg.on('pointerout', () => bg.setFillStyle(0x3a3a4a));
+
+    container.setDepth(1000);
+    this.buyTurretButton = container;
+
+    if (this.turrets.length >= MAX_TURRETS) {
+      this.disableBuyTurretButton();
+    }
+  }
+
+  private canBuyTurret(): boolean {
+    return this.gold >= TURRET_PURCHASE_COST && this.turrets.length < MAX_TURRETS;
+  }
+
+  private buyTurret(): void {
+    if (!this.canBuyTurret()) return;
+    if (!this.spendGold(TURRET_PURCHASE_COST)) return;
+
+    this.spawnTurret(this.turrets.length);
+    AudioManager.getInstance(this)?.playSfx(SFX_KEYS.purchase_success.key);
+
+    if (this.turrets.length >= MAX_TURRETS) {
+      this.disableBuyTurretButton();
+    }
+  }
+
+  private spawnTurret(index: number): void {
+    // Position turrets in a vertical column near the castle
+    const x = PLAYER_BASE_X + 60;
+    const y = GAME_HEIGHT / 2 - 60 + index * 60;
+
+    const turret = new Turret({
+      scene: this,
+      x,
+      y,
+      index,
+      onUpgradeRequest: (t) => this.handleTurretUpgrade(t),
+    });
+    turret.setDepth(50);
+    this.turrets.push(turret);
+  }
+
+  private handleTurretUpgrade(turret: Turret): void {
+    if (!turret.canUpgrade()) return;
+    if (this.gold < TURRET_UPGRADE_COST) return;
+
+    if (this.spendGold(TURRET_UPGRADE_COST)) {
+      turret.upgrade();
+      AudioManager.getInstance(this)?.playSfx(SFX_KEYS.purchase_success.key);
+    }
+  }
+
+  private disableBuyTurretButton(): void {
+    const bg = this.buyTurretButton.getAt(0) as Phaser.GameObjects.Rectangle;
+    const text = this.buyTurretButton.getAt(1) as Phaser.GameObjects.Text;
+    bg.setFillStyle(0x2a2a2a);
+    bg.removeInteractive();
+    text.setColor('#666666');
+    text.setText('MAX');
+  }
+
+  // =========================================
+  // Enemy Turret Management (Final Level)
+  // =========================================
+
+  private spawnEnemyTurrets(): void {
+    const positions = [
+      { x: ENEMY_BASE_X - 60, y: GAME_HEIGHT / 2 - 60 },
+      { x: ENEMY_BASE_X - 60, y: GAME_HEIGHT / 2 },
+      { x: ENEMY_BASE_X - 60, y: GAME_HEIGHT / 2 + 60 },
+    ];
+
+    for (const pos of positions) {
+      const turret = new EnemyTurret({
+        scene: this,
+        x: pos.x,
+        y: pos.y,
+      });
+      turret.setDepth(50);
+      this.enemyTurrets.push(turret);
+    }
+  }
+
+  private updateEnemyTurrets(deltaMs: number): void {
+    const playerUnits = this.playerUnits.getChildren() as PlayerUnit[];
+    for (const turret of this.enemyTurrets) {
+      turret.updateTurret(deltaMs, playerUnits);
+    }
   }
 }

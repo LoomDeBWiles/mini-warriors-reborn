@@ -11,7 +11,7 @@ export default defineConfig({
     port: 5173,
     open: false,
     host: '0.0.0.0',
-    allowedHosts: ['miniwarriors.duckdns.org'],
+    allowedHosts: true,
   },
   build: {
     outDir: 'dist',

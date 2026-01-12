@@ -9,10 +9,21 @@
     },
     "suno-mcp": {
       "command": "/home/ben/tools/suno-mcp/.venv/bin/python",
-      "args": ["-m", "suno_mcp.server"],
+      "args": [
+        "-m",
+        "suno_mcp.server"
+      ],
       "env": {
         "PYTHONPATH": "/home/ben/tools/suno-mcp/src"
       }
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest"
+      ],
+      "env": {}
     }
   }
 }

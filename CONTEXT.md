@@ -4,8 +4,27 @@
 | Task | Command |
 |------|---------|
 | Dev server | `npm run dev` |
+| Dev server (LAN access) | `npm run dev -- --host 0.0.0.0` |
 | Build | `npm run build` |
 | Preview build | `npm run preview` |
+
+### External Access (Public URL)
+
+To share the dev server with external users (not on your local network):
+
+**Tab 1 - Start dev server:**
+```bash
+npm run dev
+```
+
+**Tab 2 - Create public tunnel:**
+```bash
+npx cloudflared tunnel --url http://localhost:5173
+```
+
+The tunnel will output a public URL like `https://xyz.trycloudflare.com`. Share this URL with external testers.
+
+**Note:** `vite.config.ts` has `allowedHosts: true` to allow tunnel domains.
 
 ## Architecture
 

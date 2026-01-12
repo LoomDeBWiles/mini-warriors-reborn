@@ -2,7 +2,6 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../../constants';
 import { Button } from '../../ui/Button';
 import { THEME } from '../../ui/theme';
-import { TransitionManager } from '../../systems/TransitionManager';
 import { AudioManager } from '../../managers/AudioManager';
 
 const STAR_FILL_DURATION = 400;
@@ -466,14 +465,17 @@ export class ResultsOverlay extends Phaser.Scene {
   }
 
   private returnToMenu(): void {
-    this.scene.stop('battle');
-    this.scene.stop();
-    TransitionManager.transition(
-      this.scene.get('levelSelect') || this,
-      'levelSelect',
-      undefined,
-      'fade'
-    );
-    this.scene.start('levelSelect');
+    // Disable input to prevent double-clicks
+    this.input.enabled = false;
+
+    // Fade out using this scene's camera (scene must be running for fade to work)
+    this.cameras.main.fadeOut(400, 0, 0, 0);
+
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      // Stop scenes and start level select after fade completes
+      this.scene.stop('battle');
+      this.scene.stop();
+      this.scene.start('levelSelect');
+    });
   }
 }
