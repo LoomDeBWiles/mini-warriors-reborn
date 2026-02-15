@@ -25,3 +25,9 @@ npm-debug.log*
 # bv (beads viewer) local config and caches
 .bv/
 .mcp.json
+
+# Agent/tool artifacts
+logs/
+downloads/
+.playwright-mcp/
+.beads/daemon-error
