@@ -32,6 +32,8 @@
 
 **Unit factories:** `createPlayerUnit()` / `createEnemyUnit()` apply upgrades and stage multipliers to base stats defined in data files. Never construct `PlayerUnit`/`EnemyUnit` directly.
 
+**Role color helper:** `getRoleColor(unit)` exists as a module-level function in both `LoadoutGrid.ts` and `SpawnBar.ts`. Logic: `range > 0` → ranged, `isTank` → tank, `isHealer` → support, else melee. Colors from `THEME.colors.role`. If a third file needs this, extract to `theme.ts`.
+
 ## Asset Generation
 
 Game assets are AI-generated via MCP servers configured in `.mcp.json` (gitignored).
@@ -62,12 +64,20 @@ Free tier: 10 requests/hour. Output to `public/assets/audio/music/`.
 
 Required tracks: menu, battle_easy, battle_hard, boss, upgrade, victory, defeat.
 
+## Recent Changes
+
+**UI Polish (w1_ui-polish)** — completed, all 7 beads closed:
+- LoadoutGrid: role-colored stripes, HP/damage stat previews, ghost empty slots
+- HUD: framed gold/wave panels, themed HP labels, low-HP pulse, wave banner with scale animation
+- SpawnBar: role-colored bottom borders, unit sprite previews
+- All UI components now import `THEME` from `./theme` — use `THEME.colors.role` for role colors, `getRoleColor(unit)` helper in LoadoutGrid/SpawnBar
+
 ## Plans
 
-| Plan | Purpose |
-|------|---------|
-| `plans/art-overhaul.md` | Replace all sprites with proper PixelLab characters, add new units, projectile system |
-| `plans/ui-ux-improvements.md` | UI/UX polish: typography, buttons, transitions, battle HUD, victory screen |
+| Plan | Purpose | Status |
+|------|---------|--------|
+| `plans/art-overhaul.md` | Replace all sprites with proper PixelLab characters, add new units, projectile system | **Next up** — not yet started |
+| `plans/ui-ux-improvements.md` | UI/UX polish: typography, buttons, transitions, battle HUD, victory screen | Partially done (w1_ui-polish covered HUD/loadout/spawnbar items) |
 
 ## Non-Source Directories
 

@@ -106,9 +106,9 @@ Singletons (`GameState`, `AudioManager`) live in the Phaser registry and are acc
 |------|-------|---------|----------------|
 | `src/ui/theme.ts` | 174 | `THEME` constant | Colors, typography, animation timings, spacing, depth layers |
 | `src/ui/Button.ts` | 267 | `Button` class | 3-tier button (primary/secondary/tertiary) with hover/press/disabled states |
-| `src/ui/HUD.ts` | 281 | `HUD` class | Battle HUD: gold, wave counter, base HP bars, floating feedback |
-| `src/ui/SpawnBar.ts` | 279 | `SpawnBar` class | Bottom spawn buttons: costs, cooldown circles, affordability states |
-| `src/ui/LoadoutGrid.ts` | 333 | `LoadoutGrid` class | Unit selection grid for pre-battle (max 5 slots), stat tooltips |
+| `src/ui/HUD.ts` | 339 | `HUD` class | Battle HUD: framed gold/wave displays, themed HP bars with low-HP pulse, wave announcement banner |
+| `src/ui/SpawnBar.ts` | 294 | `SpawnBar` class | Bottom spawn buttons: role-colored borders, unit sprite previews, cooldown circles |
+| `src/ui/LoadoutGrid.ts` | 369 | `LoadoutGrid` class | Unit selection grid: role-indicator stripes, stat previews, ghost empty slots |
 | `src/ui/UpgradeTree.ts` | 261 | `UpgradeTree` class | 3-path upgrade tree: offense/defense/utility × 3 tiers |
 | `src/ui/HealthBar.ts` | 53 | `HealthBar` class | Unit health bar (green→red below 30%) |
 | `src/ui/DamageNumbers.ts` | 33 | `showDamageNumber()` | Floating red "-X" that rises and fades |
