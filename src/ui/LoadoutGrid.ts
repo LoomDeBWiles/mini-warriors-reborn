@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH } from '../constants';
 import { UnitDefinition } from '../data/units';
 import { getEffectiveDisplayStats } from '../units/PlayerUnit';
+import { THEME } from './theme';
 
 const CARD_WIDTH = 100;
 const CARD_HEIGHT = 120;
@@ -9,6 +10,13 @@ const CARD_SPACING = 15;
 const CARDS_PER_ROW = 5;
 const SLOT_SIZE = 80;
 const SLOT_SPACING = 10;
+
+function getRoleColor(unit: UnitDefinition): number {
+  if (unit.range > 0) return THEME.colors.role.ranged;
+  if (unit.isTank) return THEME.colors.role.tank;
+  if (unit.isHealer) return THEME.colors.role.support;
+  return THEME.colors.role.melee;
+}
 
 interface LoadoutGridConfig {
   scene: Phaser.Scene;
@@ -91,6 +99,10 @@ export class LoadoutGrid extends Phaser.GameObjects.Container {
     bg.setStrokeStyle(2, 0x6a6a7a);
     container.add(bg);
 
+    const roleColor = getRoleColor(unit);
+    const roleStripe = this.scene.add.rectangle(2, CARD_HEIGHT / 2, 4, CARD_HEIGHT, roleColor);
+    container.add(roleStripe);
+
     // Unit sprite (show first frame of idle animation)
     const textureKey = `unit_${unit.id}`;
     const sprite = this.scene.add.sprite(CARD_WIDTH / 2, 40, textureKey, 0);
@@ -105,10 +117,28 @@ export class LoadoutGrid extends Phaser.GameObjects.Container {
     name.setOrigin(0.5);
     container.add(name);
 
-    // Cost indicator (shows effective cost with upgrades applied)
+    // Stat preview
     const stats = this.effectiveStats.get(unit.id);
-    const costValue = stats?.spawnCost ?? unit.spawnCost;
-    const cost = this.scene.add.text(CARD_WIDTH / 2, 100, `${costValue}g`, {
+    if (stats) {
+      const hpText = this.scene.add.text(CARD_WIDTH / 2 - 15, 93, `♥ ${stats.hp}`, {
+        fontSize: '11px',
+        color: '#4ade80',
+      });
+      hpText.setOrigin(0.5);
+      container.add(hpText);
+
+      const dmgText = this.scene.add.text(CARD_WIDTH / 2 + 25, 93, `⚔ ${stats.damage}`, {
+        fontSize: '11px',
+        color: '#ef4444',
+      });
+      dmgText.setOrigin(0.5);
+      container.add(dmgText);
+    }
+
+    // Cost indicator (shows effective cost with upgrades applied)
+    const costStats = this.effectiveStats.get(unit.id);
+    const costValue = costStats?.spawnCost ?? unit.spawnCost;
+    const cost = this.scene.add.text(CARD_WIDTH / 2, 108, `${costValue}g`, {
       fontSize: '12px',
       color: '#ffd700',
     });
@@ -159,13 +189,18 @@ export class LoadoutGrid extends Phaser.GameObjects.Container {
         SLOT_SIZE,
         0x2a2a3a
       );
-      slotBg.setStrokeStyle(2, 0x5a5a6a);
+      slotBg.setStrokeStyle(1, 0x5a5a6a);
       slotContainer.add(slotBg);
 
-      // Slot number
-      const slotNum = this.scene.add.text(SLOT_SIZE / 2, SLOT_SIZE / 2, `${i + 1}`, {
-        fontSize: '24px',
-        color: '#4a4a5a',
+      // Ghost circle silhouette
+      const ghostCircle = this.scene.add.circle(SLOT_SIZE / 2, SLOT_SIZE / 2 - 8, 16, 0x4a4a5a);
+      ghostCircle.setAlpha(0.3);
+      slotContainer.add(ghostCircle);
+
+      // "Empty" label
+      const slotNum = this.scene.add.text(SLOT_SIZE / 2, SLOT_SIZE / 2 + 18, 'Empty', {
+        fontSize: '12px',
+        color: '#666666',
       });
       slotNum.setOrigin(0.5);
       slotContainer.add(slotNum);
@@ -209,15 +244,17 @@ export class LoadoutGrid extends Phaser.GameObjects.Container {
 
     // Update slot contents
     this.slotContainers.forEach((container, i) => {
-      // Remove existing unit content (keep bg and number)
-      while (container.list.length > 2) {
+      // Remove existing unit content (keep bg, ghost circle, and label)
+      while (container.list.length > 3) {
         const obj = container.list[container.list.length - 1] as Phaser.GameObjects.GameObject;
         container.remove(obj, true);
       }
 
-      // Show slot number when empty
-      const slotNum = container.list[1] as Phaser.GameObjects.Text;
+      // Show ghost circle and "Empty" label when slot is empty
+      const slotNum = container.list[2] as Phaser.GameObjects.Text;
       slotNum.setVisible(i >= this.selectedLoadout.length);
+      const ghostCircle = container.list[1] as Phaser.GameObjects.Arc;
+      ghostCircle.setVisible(i >= this.selectedLoadout.length);
 
       if (i < this.selectedLoadout.length) {
         const unitId = this.selectedLoadout[i];

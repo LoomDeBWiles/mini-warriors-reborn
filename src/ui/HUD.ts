@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
+import { THEME } from './theme';
 
 const HUD_HEIGHT = 60;
 const WAVE_BANNER_SLIDE_DURATION = 400;
@@ -54,10 +55,20 @@ export class HUD extends Phaser.GameObjects.Container {
     this.add(bg);
 
     // Gold display (left side)
+    const goldPanel = this.scene.add.graphics();
+    goldPanel.fillStyle(0x222222, 0.6);
+    goldPanel.fillRoundedRect(HUD_PADDING - 8, HUD_HEIGHT / 2 - 16, 130, 32, 6);
+    this.add(goldPanel);
+
+    const coinIcon = this.scene.add.graphics();
+    coinIcon.fillStyle(0xffd700, 1);
+    coinIcon.fillCircle(HUD_PADDING + 8, HUD_HEIGHT / 2, 7);
+    this.add(coinIcon);
+
     this.goldText = this.scene.add.text(
-      HUD_PADDING,
+      HUD_PADDING + 20,
       HUD_HEIGHT / 2,
-      `Gold: ${config.initialGold}`,
+      `${config.initialGold}`,
       {
         fontSize: '24px',
         color: '#ffd700',
@@ -67,6 +78,11 @@ export class HUD extends Phaser.GameObjects.Container {
     this.add(this.goldText);
 
     // Wave display (center)
+    const wavePanel = this.scene.add.graphics();
+    wavePanel.fillStyle(0x222222, 0.6);
+    wavePanel.fillRoundedRect(GAME_WIDTH / 2 - 80, HUD_HEIGHT / 2 - 16, 160, 32, 6);
+    this.add(wavePanel);
+
     this.waveText = this.scene.add.text(
       GAME_WIDTH / 2,
       HUD_HEIGHT / 2,
@@ -118,9 +134,10 @@ export class HUD extends Phaser.GameObjects.Container {
     text: Phaser.GameObjects.Text;
   } {
     // Label above bar
+    const labelColor = fillColor === PLAYER_HP_COLOR ? '#4ade80' : '#ef4444';
     const labelText = this.scene.add.text(x + HP_BAR_WIDTH / 2, y - 18, label, {
-      fontSize: '12px',
-      color: '#aaaaaa',
+      fontSize: THEME.typography.tiny.size,
+      color: labelColor,
     });
     labelText.setOrigin(0.5, 0.5);
     this.add(labelText);
@@ -145,6 +162,17 @@ export class HUD extends Phaser.GameObjects.Container {
     );
     this.add(fill);
 
+    // Rounded appearance: darker overlay at top edge
+    const innerShadow = this.scene.add.rectangle(
+      x + HP_BAR_WIDTH / 2,
+      y - HP_BAR_HEIGHT / 2 + 1,
+      HP_BAR_WIDTH,
+      2,
+      0x000000
+    );
+    innerShadow.setAlpha(0.3);
+    this.add(innerShadow);
+
     // HP text overlay
     const text = this.scene.add.text(x + HP_BAR_WIDTH / 2, y, '100%', {
       fontSize: '14px',
@@ -159,7 +187,7 @@ export class HUD extends Phaser.GameObjects.Container {
   updateGold(newAmount: number): void {
     const delta = newAmount - this.currentGold;
     this.currentGold = newAmount;
-    this.goldText.setText(`Gold: ${newAmount}`);
+    this.goldText.setText(`${newAmount}`);
 
     if (delta === 0) {
       return;
@@ -233,6 +261,26 @@ export class HUD extends Phaser.GameObjects.Container {
 
     const percent = Math.round(ratio * 100);
     text.setText(`${percent}%`);
+
+    // Low HP pulse effect
+    const existingPulseTween = (fill as any).__pulseTween;
+    if (ratio < 0.3 && ratio > 0) {
+      if (!existingPulseTween || !existingPulseTween.isPlaying()) {
+        const pulseTween = this.scene.tweens.add({
+          targets: fill,
+          alpha: { from: 1, to: 0.5 },
+          duration: 500,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
+        (fill as any).__pulseTween = pulseTween;
+      }
+    } else if (existingPulseTween) {
+      existingPulseTween.stop();
+      fill.setAlpha(1);
+      (fill as any).__pulseTween = null;
+    }
   }
 
   /**
@@ -245,32 +293,43 @@ export class HUD extends Phaser.GameObjects.Container {
     const centerX = GAME_WIDTH / 2;
     const endX = GAME_WIDTH + 300;
 
+    // Dark semi-transparent banner background
+    const bannerBg = this.scene.add.rectangle(
+      startX, centerY, GAME_WIDTH, 80, 0x1a1a2e
+    );
+    bannerBg.setAlpha(0.8);
+    bannerBg.setDepth(1001);
+
     const banner = this.scene.add.text(startX, centerY, `Wave ${waveNumber}`, {
       fontSize: '64px',
-      color: '#ffffff',
+      color: '#ffd700',
       fontStyle: 'bold',
       stroke: '#000000',
       strokeThickness: 4,
     });
     banner.setOrigin(0.5);
     banner.setDepth(1001);
+    banner.setScale(0.8);
 
-    // Slide in
+    // Slide in with scale-up
     this.scene.tweens.add({
-      targets: banner,
+      targets: [banner, bannerBg],
       x: centerX,
+      scaleX: 1,
+      scaleY: 1,
       duration: WAVE_BANNER_SLIDE_DURATION,
       ease: 'Quad.easeOut',
       onComplete: () => {
         // Hold, then slide out
         this.scene.time.delayedCall(WAVE_BANNER_HOLD_DURATION, () => {
           this.scene.tweens.add({
-            targets: banner,
+            targets: [banner, bannerBg],
             x: endX,
             duration: WAVE_BANNER_SLIDE_DURATION,
             ease: 'Quad.easeIn',
             onComplete: () => {
               banner.destroy();
+              bannerBg.destroy();
             },
           });
         });

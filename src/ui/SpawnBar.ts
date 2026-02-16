@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../constants';
 import { UnitDefinition, UNIT_DEFINITIONS } from '../data/units';
 import { getEffectiveSpawnStats } from '../units/PlayerUnit';
+import { THEME } from './theme';
 
 const SPAWN_BAR_HEIGHT = 80;
 const BUTTON_WIDTH = 90;
@@ -33,6 +34,13 @@ interface SpawnButtonState {
   effectiveCooldownMs: number;
   isAffordable: boolean;
   cooldownEndTime: number;
+}
+
+function getRoleColor(unit: UnitDefinition): number {
+  if (unit.range > 0) return THEME.colors.role.ranged;
+  if (unit.isTank) return THEME.colors.role.tank;
+  if (unit.isHealer) return THEME.colors.role.support;
+  return THEME.colors.role.melee;
 }
 
 interface SpawnBarConfig {
@@ -94,8 +102,16 @@ export class SpawnBar extends Phaser.GameObjects.Container {
     bg.setStrokeStyle(2, ENABLED_STROKE_COLOR);
     container.add(bg);
 
+    const roleColor = getRoleColor(unit);
+    const roleBorder = this.scene.add.rectangle(0, BUTTON_HEIGHT / 2 - 1.5, BUTTON_WIDTH, 3, roleColor);
+    container.add(roleBorder);
+
+    const unitSprite = this.scene.add.sprite(0, -16, `unit_${unit.id}`, 0);
+    unitSprite.setScale(0.45);
+    container.add(unitSprite);
+
     // Unit name
-    const nameText = this.scene.add.text(0, -12, unit.name, {
+    const nameText = this.scene.add.text(0, 4, unit.name, {
       fontSize: '14px',
       color: ENABLED_TEXT_COLOR,
     });
@@ -103,7 +119,7 @@ export class SpawnBar extends Phaser.GameObjects.Container {
     container.add(nameText);
 
     // Cost indicator (shows effective cost with upgrades applied)
-    const costText = this.scene.add.text(0, 12, `${effectiveStats.spawnCost}g`, {
+    const costText = this.scene.add.text(0, 20, `${effectiveStats.spawnCost}g`, {
       fontSize: '12px',
       color: GOLD_COLOR,
     });
