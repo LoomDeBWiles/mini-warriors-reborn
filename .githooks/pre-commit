@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# w630-bd-tripwire-chain v1
+set -euo pipefail
+
+hook_dir="$(cd "$(dirname "$0")" && pwd)"
+exec "$hook_dir/pre-commit.chained" "$@"

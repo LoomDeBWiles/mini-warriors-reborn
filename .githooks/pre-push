@@ -1,0 +1,211 @@
+#!/bin/sh
+# w630-bd-tripwire-pre-push v1
+
+threshold=52428800
+mass_change_limit=500
+mass_delete_limit=200
+remote_name=${1:-origin}
+refs=$(cat)
+
+deny() {
+    printf '%s\n' "$*" >&2
+    exit 1
+}
+
+is_zero_sha() {
+    case $1 in
+        0000000000000000000000000000000000000000|0000000000000000000000000000000000000000000000000000000000000000)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+commit_range() {
+    local_sha=$1
+    remote_sha=$2
+
+    if is_zero_sha "$remote_sha"; then
+        git rev-list "$local_sha" --not "--remotes=$remote_name"
+    else
+        git rev-list "$remote_sha..$local_sha"
+    fi
+}
+
+count_lines() {
+    if [ -z "$1" ]; then
+        printf '0\n'
+        return
+    fi
+
+    printf '%s\n' "$1" | wc -l | tr -d ' '
+}
+
+changed_paths_for_commit() {
+    commit_sha=$1
+    if git rev-parse --verify "${commit_sha}^1" >/dev/null 2>&1; then
+        git diff-tree --no-commit-id --name-only -r "${commit_sha}^1" "$commit_sha"
+        return
+    fi
+
+    git diff-tree --root --no-commit-id --name-only -r "$commit_sha"
+}
+
+changed_statuses_for_commit() {
+    commit_sha=$1
+    if git rev-parse --verify "${commit_sha}^1" >/dev/null 2>&1; then
+        git diff-tree --no-commit-id --name-status -r "${commit_sha}^1" "$commit_sha"
+        return
+    fi
+
+    git diff-tree --root --no-commit-id --name-status -r "$commit_sha"
+}
+
+check_bd_sync_commit() {
+    commit_sha=$1
+    subject=$(git log --format=%s -n1 "$commit_sha") ||
+        deny "Blocked push: could not read commit subject for ${commit_sha}."
+
+    if ! printf '%s\n' "$subject" | grep -Eq '^bd (daemon )?sync:'; then
+        return 0
+    fi
+
+    paths=$(changed_paths_for_commit "$commit_sha") ||
+        deny "Blocked push: could not inspect changed paths for ${commit_sha}."
+
+    if [ -n "$paths" ] && printf '%s\n' "$paths" | grep -qv '^\.beads/'; then
+        first_paths=$(printf '%s\n' "$paths" | grep -v '^\.beads/' | sed -n '1,10p')
+        deny "Blocked bd sync commit ${commit_sha}: ${subject}
+Non-.beads paths:
+${first_paths}"
+    fi
+}
+
+check_mass_change() {
+    if [ "${ALLOW_MASS_COMMIT:-}" = "1" ]; then
+        return 0
+    fi
+
+    commit_sha=$1
+    paths=$(changed_paths_for_commit "$commit_sha") ||
+        deny "Blocked push: could not inspect changed paths for ${commit_sha}."
+    statuses=$(changed_statuses_for_commit "$commit_sha") ||
+        deny "Blocked push: could not inspect changed statuses for ${commit_sha}."
+
+    changed_count=$(count_lines "$paths")
+    deleted_paths=$(printf '%s\n' "$statuses" | awk '$1 == "D" { sub(/^[^\t]*\t/, ""); print }')
+    deleted_count=$(count_lines "$deleted_paths")
+
+    if [ "$changed_count" -le "$mass_change_limit" ] && [ "$deleted_count" -le "$mass_delete_limit" ]; then
+        return 0
+    fi
+
+    subject=$(git log --format=%s -n1 "$commit_sha") ||
+        deny "Blocked push: could not read commit subject for ${commit_sha}."
+    first_paths=$(printf '%s\n' "$paths" | sed -n '1,20p')
+    deny "Blocked mass-change commit ${commit_sha}: ${subject}
+Changed paths: ${changed_count} (limit ${mass_change_limit})
+Deletions: ${deleted_count} (limit ${mass_delete_limit})
+First changed paths:
+${first_paths}
+Override: ALLOW_MASS_COMMIT=1"
+}
+
+check_pushed_commits() {
+    while IFS=' ' read -r local_ref local_sha _remote_ref remote_sha; do
+        [ -n "$local_ref" ] || continue
+        if is_zero_sha "$local_sha"; then
+            continue
+        fi
+
+        commits=$(commit_range "$local_sha" "$remote_sha") ||
+            deny "Blocked push: could not enumerate commits for ${local_ref}."
+
+        for commit_sha in $commits; do
+            check_bd_sync_commit "$commit_sha"
+            check_mass_change "$commit_sha"
+        done
+    done
+}
+
+scan_objects() {
+    git cat-file --batch-check='%(objecttype) %(objectsize) %(objectname) %(rest)' |
+        while IFS= read -r object_line; do
+            # shellcheck disable=SC2086
+            set -- $object_line
+            object_type=$1
+            object_size=$2
+            object_oid=$3
+            object_path=${object_line#"$object_type $object_size $object_oid"}
+            object_path=${object_path# }
+
+            [ "$object_type" = "blob" ] || continue
+            case $object_size in
+                ''|*[!0-9]*)
+                    deny "Blocked push: could not size blob ${object_oid}."
+                    ;;
+            esac
+
+            if [ "$object_size" -gt "$threshold" ]; then
+                if [ -n "$object_path" ]; then
+                    deny "Blocked oversized pushed blob: ${object_path} (${object_oid}) is ${object_size} bytes (limit ${threshold}). Use ALLOW_LARGE_FILE=1 or git push --no-verify only for deliberate large-file pushes."
+                fi
+                deny "Blocked oversized pushed blob: ${object_oid} is ${object_size} bytes (limit ${threshold}). Use ALLOW_LARGE_FILE=1 or git push --no-verify only for deliberate large-file pushes."
+            fi
+        done
+}
+
+chain_existing_hook() {
+    hook_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+    chained_hook="$hook_dir/pre-push.chained"
+    if [ -x "$chained_hook" ]; then
+        printf '%s\n' "$refs" | "$chained_hook" "$@"
+        exit $?
+    fi
+}
+
+chain_bd() {
+    if command -v bd >/dev/null 2>&1; then
+        printf '%s\n' "$refs" | bd hooks run pre-push "$@"
+        exit $?
+    fi
+}
+
+if [ -n "$refs" ]; then
+    if ! printf '%s\n' "$refs" | check_pushed_commits; then
+        exit 1
+    fi
+fi
+
+if [ "${ALLOW_LARGE_FILE:-}" != "1" ] && [ -n "$refs" ]; then
+    if ! printf '%s\n' "$refs" |
+        while IFS=' ' read -r local_ref local_sha _remote_ref remote_sha; do
+            [ -n "$local_ref" ] || continue
+            if is_zero_sha "$local_sha"; then
+                continue
+            fi
+
+            if is_zero_sha "$remote_sha"; then
+                objects=$(git rev-list --objects "$local_sha" --not "--remotes=$remote_name") ||
+                    deny "Blocked push: could not enumerate objects for ${local_ref}."
+                if ! printf '%s\n' "$objects" | scan_objects; then
+                    exit 1
+                fi
+            else
+                objects=$(git rev-list --objects "$remote_sha..$local_sha") ||
+                    deny "Blocked push: could not enumerate objects for ${local_ref}."
+                if ! printf '%s\n' "$objects" | scan_objects; then
+                    exit 1
+                fi
+            fi
+        done
+    then
+        exit 1
+    fi
+fi
+
+chain_existing_hook "$@"
+chain_bd "$@"
+exit 0
