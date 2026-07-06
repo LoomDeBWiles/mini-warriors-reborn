@@ -1,0 +1,4 @@
+.beads/issues.jsonl
+.beads/deletions.jsonl
+.beads/interactions.jsonl
+.beads/metadata.json
